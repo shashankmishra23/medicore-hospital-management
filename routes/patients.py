@@ -1,10 +1,9 @@
 from datetime import date
 
 from flask import Blueprint, abort, jsonify, request
-from werkzeug.security import generate_password_hash
 
 from audit import audit
-from auth import can, requires, temporary_password
+from auth import can, requires
 from db import query, query_one, transaction
 from utils import (as_choice, as_date, check_email, check_phone, clean,
                    get_json, require)
@@ -116,32 +115,6 @@ def get_patient(pid):
     account = query_one("SELECT email, last_login FROM patient_accounts WHERE patient_id=%s", (pid,))
     patient["portal_email"] = account["email"] if account else None
     return jsonify(patient)
-
-
-@bp.route("/<int:pid>/portal-access", methods=["POST"])
-@requires("patients.write")
-def give_portal_access(pid):
-    """
-    Reception gives an existing patient a portal login after checking their ID.
-    A one-time password is shown to staff to hand over; the patient changes it later.
-    """
-    email = check_email(get_json().get("email"))
-    if not email:
-        abort(400, "Please enter the patient's email.")
-    email = email.lower()
-    if not query_one("SELECT 1 FROM patients WHERE patient_id=%s", (pid,)):
-        abort(404, "Patient not found.")
-    if query_one("SELECT 1 FROM patient_accounts WHERE patient_id=%s", (pid,)):
-        abort(409, "This patient already has portal access.")
-
-    password = temporary_password()
-    with transaction() as cur:
-        cur.execute("""
-            INSERT INTO patient_accounts (patient_id, email, password_hash, must_change_password)
-            VALUES (%s,%s,%s,TRUE)
-        """, (pid, email, generate_password_hash(password)))
-    audit("Gave portal access", f"P-{pid:03d} ({email})")
-    return jsonify({"success": True, "email": email, "temporary_password": password}), 201
 
 
 @bp.route("", methods=["POST"])

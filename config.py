@@ -25,10 +25,6 @@ class Config:
     DB_NAME = os.environ.get("DB_NAME", "hospital_db")
 
     DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"
-
-    # Demo mode: any password is accepted, so you can show the app quickly.
-    # Never turn this on for a real hospital.
-    DEMO_MODE = os.environ.get("DEMO_MODE", "0") == "1"
     PORT = int(os.environ.get("PORT", "5000"))
 
     # Your hospital's details. Change these to rebrand the whole app:

@@ -21,7 +21,7 @@ TEST_DB = os.environ.get("TEST_DB_NAME", "hospital_db_test")
 
 @pytest.fixture(scope="session")
 def app():
-    app = create_app({"DB_NAME": TEST_DB, "TESTING": True, "SECRET_KEY": "test", "DEMO_MODE": False})
+    app = create_app({"DB_NAME": TEST_DB, "TESTING": True, "SECRET_KEY": "test"})
     db.load_schema(app.config)
     yield app
     db.drop_database(app.config)

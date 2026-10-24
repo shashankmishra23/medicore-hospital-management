@@ -13,8 +13,9 @@ The hospital name, address and phone number come from settings, so the same code
 
 **Staff app**
 
-- Role-based sign in. Staff pick their role (Admin, Doctor, Nurse, Pharmacist, Receptionist), then type their name and password. The server checks that the account really has that role.
-- No usernames to remember: staff sign in with their full name or first name. New staff get a one-time password from the admin and choose their own the first time they sign in. Admins can reset a forgotten password.
+- Role-based sign in. Staff pick their role (Admin, Doctor, Nurse, Pharmacist, Receptionist) and type their name. The server checks that the account really has that role.
+- No usernames to remember: staff sign in with their full name or first name.
+- One Settings page (admin only) for sign-in: switch passwords on or off for everyone, create staff and patient accounts, set or change passwords, and turn accounts off.
 - Each role gets its own menu and data. For example, a pharmacist can't open billing, and a doctor doesn't see revenue. This is enforced by the API, not just hidden in the UI.
 - Patients: register, edit, search by name / phone / ID, full patient file with history, allergies, admissions, prescriptions and bills.
 - Appointments: book from the doctor's free 30-minute slots, with checks for working days, past dates and double-booking. Online bookings are marked so reception can spot them.
@@ -26,14 +27,14 @@ The hospital name, address and phone number come from settings, so the same code
 
 **Patient portal**
 
-- Sign up with email and password, or get access from reception if you already have a hospital record.
+- Sign up online, or get an account from the hospital admin if you already have a hospital record.
 - Book an appointment in four steps: doctor, day, time slot, reason. Cancel upcoming visits.
 - See prescriptions (and print them), bills and receipts, and keep contact details and allergies up to date.
 
 **Security**
 
 - Passwords are stored as salted hashes. Accounts lock for 15 minutes after 5 wrong passwords.
-- One-time passwords must be replaced before anything else can be done. New passwords need letters and numbers.
+- Passwords need at least 8 characters with letters and numbers. With passwords switched off, the login pages ask only for a name or email (useful for demos and closed networks).
 - SQL queries are parameterised; all text shown on the page is escaped; API writes must be JSON (blocks cross-site form posts).
 - Database password and secret key live in `.env`, which is not committed.
 
@@ -46,6 +47,8 @@ The hospital name, address and phone number come from settings, so the same code
 | ![Booking](docs/screenshots/portal-booking.jpg) | ![Appointments](docs/screenshots/appointments.jpg) |
 | **Patient file** | **Activity log** |
 | ![Patient file](docs/screenshots/patient-file.jpg) | ![Activity log](docs/screenshots/activity-log.jpg) |
+| **Settings: passwords and accounts** | **Wards & rooms** |
+| ![Settings](docs/screenshots/settings.jpg) | ![Wards](docs/screenshots/wards.jpg) |
 
 ## Tech stack
 
@@ -79,7 +82,7 @@ Open http://127.0.0.1:5000.
 
 ### Signing in
 
-Choose your role on the login page, then type your **name** (for example `Shashank Mishra`, or just `Shashank`) and password.
+Choose your role on the login page, then type your **name** (for example `Shashank Mishra`, or just `Shashank`) and, if passwords are switched on, your password.
 
 The sample data has one person for each role:
 
@@ -92,9 +95,15 @@ The sample data has one person for each role:
 | Receptionist | Kavita Rao | `reception123` |
 | Patient (portal) | `anita.p@email.com` | `patient123` |
 
-**Demo mode.** Set `DEMO_MODE=1` in `.env` and any password is accepted, which is handy when showing the project to someone. The login page says when it is on. Keep it `0` for real use.
+### Settings: passwords and accounts
 
-New staff are added from **Doctors & Staff → Add Staff**. The admin gets a one-time password to hand over, and the person picks their own password the first time they sign in.
+Sign in as Admin and open **Settings**. Everything about signing in is there:
+
+- **Ask for a password when signing in.** On by default. Switch it off and the login pages ask only for a name (staff) or email (patients), with no password box. Switch it back on at any time.
+- **Staff accounts.** Every staff member is listed. Click **Create account** to let someone sign in, choose which role they sign in as, and optionally give a password. Use **Set password** / **Change password** and **Turn off** / **Turn on** for existing accounts. Setting a password also unlocks an account that was locked after wrong attempts.
+- **Patient portal accounts.** Create an account for an existing patient (after checking their ID), set their password, or turn the account off.
+
+New staff are added from **Doctors & Staff → Add Staff**, then given a login on the Settings page.
 
 ### What each role can do
 
@@ -108,6 +117,7 @@ New staff are added from **Doctors & Staff → Add Staff**. The admin gets a one
 | Billing | edit | | | | edit |
 | Wards & rooms | edit | view | edit | | view |
 | Staff | edit | | | | view |
+| Settings & accounts | edit | | | | |
 | Activity log | view | | | | |
 
 ## Tests

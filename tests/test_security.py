@@ -1,11 +1,37 @@
+from contextlib import contextmanager
 from datetime import date
 
-from app import create_app
-from conftest import TEST_DB, login
+from conftest import login, patient_login
 
 
-def staff_login(client, name, password, role=None):
-    return client.post("/api/auth/login", json={"name": name, "password": password, "role": role})
+def staff_login(client, name, password=None, role=None):
+    body = {"name": name, "role": role}
+    if password is not None:
+        body["password"] = password
+    return client.post("/api/auth/login", json=body)
+
+
+def add_staff_with_account(admin, first, last, password=None, role="Nurse"):
+    """Add a staff member, then give them a login on the Settings page."""
+    r = admin.post("/api/staff", json={
+        "first_name": first, "last_name": last, "role": role, "email": f"{first}.{last}@hospital.com".lower(),
+        "hire_date": date.today().isoformat(),
+    })
+    assert r.status_code == 201, r.get_json()
+    staff_id = r.get_json()["staff_id"]
+    r = admin.post("/api/settings/staff-accounts", json={"staff_id": staff_id, "role": role, "password": password})
+    assert r.status_code == 201, r.get_json()
+    account = next(s for s in admin.get("/api/settings/accounts").get_json()["staff"] if s["staff_id"] == staff_id)
+    return account["user_id"]
+
+
+@contextmanager
+def passwords_switched_off(admin):
+    assert admin.put("/api/settings", json={"require_password": False}).status_code == 200
+    try:
+        yield
+    finally:
+        admin.put("/api/settings", json={"require_password": True})
 
 
 def test_sign_in_with_full_name_first_name_or_username(app):
@@ -22,46 +48,87 @@ def test_role_must_match_the_account(client):
     assert staff_login(client, "Arun Sharma", "doctor123", "Doctor").status_code == 200
 
 
-def add_staff(admin, first, last, role="Nurse"):
-    r = admin.post("/api/staff", json={
-        "first_name": first, "last_name": last, "role": role, "email": f"{first}.{last}@hospital.com".lower(),
-        "hire_date": date.today().isoformat(), "create_login": True,
-    })
-    assert r.status_code == 201, r.get_json()
-    return r.get_json()
-
-
 def test_same_first_name_needs_full_name(admin, app):
-    one_time = add_staff(admin, "Arun", "Kapoor")["temporary_password"]
-    r = staff_login(app.test_client(), "Arun", one_time)
+    add_staff_with_account(admin, "Arun", "Kapoor", "kapoor-pass-1")
+    r = staff_login(app.test_client(), "Arun", "kapoor-pass-1")
     assert r.status_code == 409 and "full name" in r.get_json()["error"]
     # Picking the role is enough to tell them apart
-    assert staff_login(app.test_client(), "Arun", one_time, "Nurse").status_code == 200
+    assert staff_login(app.test_client(), "Arun", "kapoor-pass-1", "Nurse").status_code == 200
 
 
-def test_first_sign_in_requires_own_password(admin, app):
-    one_time = add_staff(admin, "Meena", "Joshi")["temporary_password"]
-    user = app.test_client()
-    me = staff_login(user, "Meena Joshi", one_time).get_json()
-    assert me["must_change_password"] is True
-    assert user.get("/api/patients").status_code == 403          # blocked until a new password is set
-
-    change = {"current_password": one_time, "new_password": "meena-pass-7"}
-    assert user.post("/api/auth/change-password", json=change).status_code == 200
-    assert user.get("/api/patients").status_code == 200
-    assert staff_login(app.test_client(), "Meena Joshi", "meena-pass-7").get_json()["must_change_password"] is False
+def test_settings_page_is_admin_only(app):
+    nurse = login(app.test_client(), "nurse")
+    assert nurse.get("/api/settings").status_code == 403
+    assert nurse.put("/api/settings", json={"require_password": False}).status_code == 403
+    assert nurse.get("/api/settings/accounts").status_code == 403
 
 
-def test_admin_resets_a_forgotten_password(admin, app):
-    staff_id = add_staff(admin, "Ravi", "Kumar")["staff_id"]
-    r = admin.post(f"/api/staff/{staff_id}/reset-password", json={})
-    assert r.status_code == 200
-    assert staff_login(app.test_client(), "Ravi Kumar", r.get_json()["temporary_password"]).status_code == 200
+def test_password_switch_off_and_on(admin, app):
+    assert admin.get("/api/settings").get_json() == {"require_password": True}
+    assert staff_login(app.test_client(), "Arun Sharma").status_code == 401           # password needed
+
+    with passwords_switched_off(admin):
+        r = staff_login(app.test_client(), "Arun Sharma", role="Doctor")                # name only
+        assert r.status_code == 200 and r.get_json()["name"] == "Arun Sharma"
+        assert staff_login(app.test_client(), "Nobody Here").status_code == 401        # must still exist
+        r = app.test_client().post("/api/portal/login", json={"email": "anita.p@email.com"})
+        assert r.status_code == 200                                                    # patients: email only
+        assert b'id="password"' not in app.test_client().get("/login").data
+
+    assert b'id="password"' in app.test_client().get("/login").data
+    assert staff_login(app.test_client(), "Arun Sharma", "wrong").status_code == 401
+
+
+def test_account_without_password_only_works_while_passwords_are_off(admin, app):
+    user_id = add_staff_with_account(admin, "Nopass", "Person")
+    assert staff_login(app.test_client(), "Nopass Person", "anything").status_code == 401
+    with passwords_switched_off(admin):
+        assert staff_login(app.test_client(), "Nopass Person").status_code == 200
+
+    # The admin sets a password for them on the Settings page
+    url = f"/api/settings/staff-accounts/{user_id}"
+    assert admin.put(url, json={"password": "short"}).status_code == 400
+    assert admin.put(url, json={"password": "nopass-now-1"}).status_code == 200
+    assert staff_login(app.test_client(), "Nopass Person", "nopass-now-1").status_code == 200
+
+
+def test_turning_an_account_off(admin, app):
+    user_id = add_staff_with_account(admin, "Turn", "Off", "turn-off-pass-1")
+    url = f"/api/settings/staff-accounts/{user_id}"
+    assert admin.put(url, json={"is_active": False}).status_code == 200
+    assert staff_login(app.test_client(), "Turn Off", "turn-off-pass-1").status_code == 403
+    assert admin.put(url, json={"is_active": True}).status_code == 200
+    assert staff_login(app.test_client(), "Turn Off", "turn-off-pass-1").status_code == 200
+
+    me = admin.get("/api/auth/me").get_json()
+    r = admin.put(f"/api/settings/staff-accounts/{me['user_id']}", json={"is_active": False})
+    assert r.status_code == 400   # can't lock yourself out
+
+
+def test_account_locks_after_five_wrong_passwords(admin, app):
+    user_id = add_staff_with_account(admin, "Lock", "Test", "right-pass-1")
+    other = app.test_client()
+    for _ in range(4):
+        assert staff_login(other, "Lock Test", "nope").status_code == 401
+    assert staff_login(other, "Lock Test", "nope").status_code == 429
+    # Even the right password is refused while locked...
+    assert staff_login(other, "Lock Test", "right-pass-1").status_code == 429
+    # ...until the admin sets a new one, which unlocks the account
+    admin.put(f"/api/settings/staff-accounts/{user_id}", json={"password": "fresh-pass-2"})
+    assert staff_login(other, "Lock Test", "fresh-pass-2").status_code == 200
+
+
+def test_patient_sign_up_without_password_while_off(admin, app):
+    new = {"first_name": "No", "last_name": "Password", "dob": "1990-01-01", "gender": "Male",
+           "phone": "9000099999", "email": "nopw@example.com"}
+    assert app.test_client().post("/api/portal/register", json=new).status_code == 400   # password needed
+    with passwords_switched_off(admin):
+        assert app.test_client().post("/api/portal/register", json=new).status_code == 201
 
 
 def test_each_role_only_sees_its_own_pages(client):
     login(client, "pharmacist")
-    for url in ("/api/bills", "/api/staff", "/api/activity", "/api/appointments", "/api/wards"):
+    for url in ("/api/bills", "/api/staff", "/api/activity", "/api/appointments", "/api/wards", "/api/settings"):
         assert client.get(url).status_code == 403, url
     assert client.get("/api/medicines").status_code == 200
     assert "monthly_revenue" not in client.get("/api/dashboard").get_json()
@@ -74,26 +141,7 @@ def test_each_role_only_sees_its_own_pages(client):
     assert patient["prescriptions"] is None and patient["bills"] is not None
 
 
-def test_account_locks_after_five_wrong_passwords(admin, app):
-    one_time = add_staff(admin, "Lock", "Test")["temporary_password"]
-    other = app.test_client()
-    for _ in range(4):
-        assert staff_login(other, "Lock Test", "nope").status_code == 401
-    assert staff_login(other, "Lock Test", "nope").status_code == 429
-    # Even the right password is refused while locked
-    assert staff_login(other, "Lock Test", one_time).status_code == 429
-
-
-def test_demo_mode_accepts_any_password(app):
-    demo = create_app({"DB_NAME": TEST_DB, "TESTING": True, "SECRET_KEY": "test", "DEMO_MODE": True})
-    c = demo.test_client()
-    assert staff_login(c, "Shashank", "anything at all", "Admin").status_code == 200
-    assert staff_login(c, "Nobody Here", "anything").status_code == 401   # the person must still exist
-    assert b"Demo mode is on" in demo.test_client().get("/login").data
-    assert b"Demo mode is on" not in app.test_client().get("/login").data
-
-
-def test_change_password(admin, app):
+def test_change_password(app):
     user = login(app.test_client(), "nurse")
     change = {"current_password": "wrong-one-1", "new_password": "second-pass-2"}
     assert user.post("/api/auth/change-password", json=change).status_code == 400
@@ -101,6 +149,7 @@ def test_change_password(admin, app):
     change["current_password"] = "nurse123"
     assert user.post("/api/auth/change-password", json=change).status_code == 200
     login(app.test_client(), "Sunita Singh", "second-pass-2")
+    patient_login(app.test_client())
 
 
 def test_activity_log_records_changes(admin):

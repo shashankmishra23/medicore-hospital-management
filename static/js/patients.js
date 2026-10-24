@@ -102,27 +102,9 @@ async function viewPatient(id) {
     ${p.portal_email
       ? html`<div class="text-sm">✓ Active · signs in as <span class="text-mono">${p.portal_email}</span></div>`
       : html`<div class="text-sm text-muted">No portal account yet.
-          <button type="button" class="btn btn-ghost btn-sm" data-perm="patients.write" onclick="openPortalAccess(${id})">🌐 Give portal access</button></div>`}
+          <button type="button" class="btn btn-ghost btn-sm" data-perm="settings.manage" onclick="openPatientAccountForm(${id})">🌐 Create portal account</button></div>`}
   `;
   openModal({ title: "Patient File", wide: true, body });
-}
-
-// Portal access for an existing patient
-// Done at the desk after checking ID; a one-time password is shown to hand over.
-async function openPortalAccess(id) {
-  let p;
-  try { p = await api.get(`/patients/${id}`); } catch (e) { showToast(e.message, true); return; }
-  openModal({
-    title: "Give Portal Access",
-    intro: `${p.first_name} ${p.last_name} will be able to book appointments and see their prescriptions and bills online. Check their ID first.`,
-    submitLabel: "Create Login",
-    body: formGrid([{ name: "email", label: "Patient's Email", type: "email", required: true, full: true, value: p.email }]),
-    onSubmit: async data => {
-      const r = await api.post(`/patients/${id}/portal-access`, data);
-      showOneTimePassword("Portal Access Created", p.first_name, r.temporary_password,
-        html`<div class="info-grid" style="margin-top:16px">${info("Website", `${location.origin}/login#patient`)}${info("Email", r.email)}</div>`);
-    },
-  });
 }
 
 // Add / edit

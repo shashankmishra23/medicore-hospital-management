@@ -43,9 +43,6 @@
     <!-- RIGHT: sign in -->
     <section class="auth-panel">
       <div class="login-card">
-        {% if demo_mode %}
-        <div class="note-box">Demo mode is on: type a staff member's name and any password.</div>
-        {% endif %}
         <div class="seg" role="tablist">
           <button type="button" data-tab="staff" onclick="showTab('staff')">🩺 Staff</button>
           <button type="button" data-tab="patient" onclick="showTab('patient')">👤 Patient</button>
@@ -58,7 +55,7 @@
           <div class="role-grid" id="role-grid"></div>
         </div>
 
-        <!-- STAFF, step 2: username and password -->
+        <!-- STAFF, step 2: name (and password, if the admin has passwords switched on) -->
         <form id="staff-form" hidden>
           <button type="button" class="back-link" onclick="chooseRole(null)">← Change role</button>
           <div class="role-chosen">
@@ -73,6 +70,7 @@
             <label for="username">Your name</label>
             <input id="username" name="name" autocomplete="username" placeholder="e.g. Shashank Mishra" required>
           </div>
+          {% if require_password %}
           <div class="form-group">
             <label for="password">Password</label>
             <div class="pw-wrap">
@@ -80,8 +78,13 @@
               <button type="button" class="pw-toggle" onclick="togglePassword(this)">SHOW</button>
             </div>
           </div>
+          {% endif %}
           <button class="btn btn-primary" type="submit" id="staff-btn">Sign in</button>
-          <div class="login-foot">First time here? Use the one-time password from your administrator.<br>Forgot your password? Ask the administrator to reset it.</div>
+          {% if require_password %}
+          <div class="login-foot">No account or forgot your password? Ask the hospital administrator.</div>
+          {% else %}
+          <div class="login-foot">No account yet? Ask the hospital administrator.</div>
+          {% endif %}
         </form>
 
         <!-- PATIENT: sign in -->
@@ -95,6 +98,7 @@
             <label for="p_email">Email</label>
             <input id="p_email" name="email" type="email" autocomplete="email" required>
           </div>
+          {% if require_password %}
           <div class="form-group">
             <label for="p_password">Password</label>
             <div class="pw-wrap">
@@ -102,6 +106,7 @@
               <button type="button" class="pw-toggle" onclick="togglePassword(this)">SHOW</button>
             </div>
           </div>
+          {% endif %}
           <button class="btn btn-primary" type="submit">Sign in</button>
           <div class="login-foot">New patient? <button type="button" class="text-link" onclick="showTab('register')">Create an account</button></div>
         </form>
@@ -121,6 +126,7 @@
               <select id="r_gender" name="gender"><option>Female</option><option>Male</option><option>Other</option></select></div>
             <div class="form-group full"><label for="r_phone">Mobile number</label><input id="r_phone" name="phone" type="tel" autocomplete="tel" required></div>
             <div class="form-group full"><label for="r_email">Email</label><input id="r_email" name="email" type="email" autocomplete="email" required></div>
+            {% if require_password %}
             <div class="form-group full"><label for="r_password">Password</label>
               <div class="pw-wrap">
                 <input id="r_password" name="password" type="password" autocomplete="new-password" required>
@@ -128,10 +134,11 @@
               </div>
               <div class="form-hint">At least 8 characters, with letters and numbers</div>
             </div>
+            {% endif %}
           </div>
           <button class="btn btn-primary" type="submit">Create account</button>
           <div class="login-foot">Already registered? <button type="button" class="text-link" onclick="showTab('patient')">Sign in</button></div>
-          <div class="login-foot">Visited us before? Ask reception to connect your old records to the portal.</div>
+          <div class="login-foot">Visited us before? Ask the hospital to connect your old records to the portal.</div>
         </form>
       </div>
     </section>

@@ -116,7 +116,6 @@ CREATE TABLE patient_accounts (
     email         VARCHAR(120) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     is_active     BOOLEAN DEFAULT TRUE,
-    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     failed_logins INT NOT NULL DEFAULT 0,
     locked_until  DATETIME,
     last_login    DATETIME,
@@ -283,12 +282,17 @@ CREATE TABLE system_users (
     password_hash VARCHAR(255) NOT NULL,
     role         ENUM('Admin','Doctor','Nurse','Pharmacist','Receptionist','Billing') NOT NULL,
     is_active    BOOLEAN DEFAULT TRUE,
-    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     failed_logins INT NOT NULL DEFAULT 0,
     locked_until DATETIME,
     last_login   DATETIME,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id) ON DELETE CASCADE
+);
+
+-- Settings the admin can change from the Settings page
+CREATE TABLE app_settings (
+    setting_key   VARCHAR(50) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL
 );
 
 -- Who did what, and when (shown to admins as the Activity Log)
@@ -527,6 +531,10 @@ INSERT INTO pharmacy_dispensing (prescription_id,medicine_id,dispensed_by,qty_di
 (1,2,5,30,NOW() - INTERVAL 9 DAY);
 
 -- ------------------------------------------------------------
+-- Ask for a password when signing in (1 = yes, 0 = name or email only).
+-- The admin can switch this on the Settings page.
+INSERT INTO app_settings (setting_key, setting_value) VALUES ('require_password', '1');
+
 -- DEMO LOGINS (for trying the app only; change these for real use).
 -- Staff sign in with their name, e.g. "Shashank Mishra" or just "Shashank":
 --   Admin: Shashank Mishra / admin123      Doctor: Arun Sharma / doctor123

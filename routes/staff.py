@@ -1,11 +1,9 @@
-import re
 from datetime import date
 
 from flask import Blueprint, abort, jsonify, request
-from werkzeug.security import generate_password_hash
 
 from audit import audit
-from auth import requires, temporary_password
+from auth import requires
 from db import query, query_one, transaction
 from utils import (as_choice, as_date, as_money, check_email, check_phone,
                    clean, get_json, require)
@@ -13,7 +11,6 @@ from utils import (as_choice, as_date, as_money, check_email, check_phone,
 bp = Blueprint("staff", __name__, url_prefix="/api")
 
 STAFF_ROLES = ("Doctor", "Nurse", "Pharmacist", "Lab Technician", "Admin", "Receptionist", "Support")
-LOGIN_ROLES = ("Admin", "Doctor", "Nurse", "Pharmacist", "Receptionist")
 STATUSES = ("Active", "Inactive", "On Leave")
 DAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
@@ -59,7 +56,7 @@ def get_staff():
 @bp.route("/staff", methods=["POST"])
 @requires("staff.write")
 def add_staff():
-    """Add a staff member. Doctors also get a doctors row; anyone can get a login."""
+    """Add a staff member. Doctors also get a doctors row. Logins are made on the Settings page."""
     data = get_json()
     require(data, "first_name", "last_name", "role", "email", "hire_date")
     role = as_choice(data["role"], "Role", STAFF_ROLES)
@@ -77,13 +74,6 @@ def add_staff():
             days = days.split(",")
         days = [as_choice(d, "Available day", DAYS) for d in days]
         fee = as_money(data.get("consultation_fee") or 0, "Consultation fee", allow_zero=True)
-
-    # A login gets a one-time password; the person picks their own when they first sign in
-    username = password = None
-    if data.get("create_login"):
-        login_role = as_choice(data.get("login_role") or role, "Login role", LOGIN_ROLES)
-        username = unique_username(clean(data["first_name"]), clean(data["last_name"]))
-        password = temporary_password()
 
     with transaction() as cur:
         cur.execute("""
@@ -108,46 +98,8 @@ def add_staff():
                 clean(data["license_number"]), fee, ",".join(days),
             ))
 
-        if username:
-            cur.execute("""
-                INSERT INTO system_users (staff_id, username, password_hash, role, must_change_password)
-                VALUES (%s,%s,%s,%s,TRUE)
-            """, (staff_id, username, generate_password_hash(password), login_role))
-
-    audit("Added staff member", f"{clean(data['first_name'])} {clean(data['last_name'])} ({role})"
-          + (" with a login" if username else ""))
-    return jsonify({"success": True, "staff_id": staff_id, "temporary_password": password}), 201
-
-
-def unique_username(first, last):
-    """arun.sharma, or arun.sharma2 if that is taken."""
-    base = re.sub(r"[^a-z0-9.]", "", f"{first}.{last}".lower()) or "user"
-    name, n = base, 1
-    while query_one("SELECT 1 FROM system_users WHERE username=%s", (name,)):
-        n += 1
-        name = f"{base}{n}"
-    return name
-
-
-@bp.route("/staff/<int:sid>/reset-password", methods=["POST"])
-@requires("staff.write")
-def reset_password(sid):
-    """For staff who forgot their password: a new one-time password, and the account is unlocked."""
-    account = query_one("""
-        SELECT u.user_id, s.first_name, s.last_name FROM system_users u
-        JOIN staff s ON s.staff_id=u.staff_id WHERE u.staff_id=%s
-    """, (sid,))
-    if not account:
-        abort(404, "This staff member has no login.")
-    password = temporary_password()
-    with transaction() as cur:
-        cur.execute("""
-            UPDATE system_users
-            SET password_hash=%s, must_change_password=TRUE, failed_logins=0, locked_until=NULL
-            WHERE user_id=%s
-        """, (generate_password_hash(password), account["user_id"]))
-    audit("Reset password", f"{account['first_name']} {account['last_name']}")
-    return jsonify({"success": True, "temporary_password": password})
+    audit("Added staff member", f"{clean(data['first_name'])} {clean(data['last_name'])} ({role})")
+    return jsonify({"success": True, "staff_id": staff_id}), 201
 
 
 @bp.route("/staff/<int:sid>/status", methods=["PUT"])

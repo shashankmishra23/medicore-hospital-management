@@ -213,10 +213,10 @@ def test_new_doctor_with_login(admin, client):
     r = admin.post("/api/staff", json={
         "first_name": "New", "last_name": "Doctor", "role": "Doctor", "email": "new.doc@hospital.com",
         "hire_date": date.today().isoformat(), "specialization": "ENT", "license_number": "MCI-ENT-099",
-        "available_days": ["Mon", "Thu"], "create_login": True,
+        "available_days": ["Mon", "Thu"],
     })
     assert r.status_code == 201
-    one_time = r.get_json()["temporary_password"]
+    staff_id = r.get_json()["staff_id"]
     doctor = next(d for d in admin.get("/api/doctors").get_json() if d["license_number"] == "MCI-ENT-099")
     assert doctor["available_days"] == "Mon,Thu"
 
@@ -225,10 +225,13 @@ def test_new_doctor_with_login(admin, client):
                                        "email": "new.doc@hospital.com", "hire_date": "2026-01-01"})
     assert r.status_code == 409
 
+    # The login is made on the Settings page
+    r = admin.post("/api/settings/staff-accounts", json={"staff_id": staff_id, "role": "Doctor", "password": "new-doc-2026"})
+    assert r.status_code == 201 and r.get_json()["username"] == "new.doctor"
+
     admin.post("/api/auth/logout", json={})
-    me = login(client, "New Doctor", one_time).get("/api/auth/me").get_json()
+    me = login(client, "New Doctor", "new-doc-2026").get("/api/auth/me").get_json()
     assert me["role"] == "Doctor" and me["doctor_id"] == doctor["doctor_id"]
-    assert me["must_change_password"] is True
 
 
 def test_room_status_rules(admin):

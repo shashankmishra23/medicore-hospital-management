@@ -14,6 +14,7 @@
     })();
     window.HOSPITAL = {{ hospital | tojson }};
     window.LOGIN_URL = "/login#patient";
+    window.REQUIRE_PASSWORD = {{ require_password | tojson }};
   </script>
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -53,7 +54,9 @@
           <div style="font-size:0.8rem;font-weight:600" id="user-name"></div>
           <div style="font-size:0.68rem;color:var(--muted)">Patient</div>
         </div>
+        {% if require_password %}
         <button class="logout-btn" onclick="openChangePassword()" title="Change password">🔑</button>
+        {% endif %}
         <button class="logout-btn" style="margin-left:4px" onclick="logout()" title="Log out">Log out</button>
       </div>
     </div>

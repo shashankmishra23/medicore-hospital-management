@@ -371,7 +371,7 @@ async function loadProfile() {
             { name: "allergies", label: "Allergies", full: true, placeholder: "e.g. Penicillin, peanuts", value: me.allergies },
           ])}
           <div class="btn-row" style="margin-top:18px;justify-content:flex-end">
-            <button type="button" class="btn btn-ghost" onclick="openChangePassword()">🔑 Change password</button>
+            ${window.REQUIRE_PASSWORD ? html`<button type="button" class="btn btn-ghost" onclick="openChangePassword()">🔑 Change password</button>` : ""}
             <button type="submit" class="btn btn-primary">Save changes</button>
           </div>
         </form>
@@ -400,7 +400,5 @@ window.addEventListener("hashchange", () => {
 });
 
 applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
-loadMe().then(me => {
-  if (me.must_change_password) openChangePassword(true);  // signed in with a one-time password
-  else showPage(location.hash.slice(1) || "home");
-}).catch(() => { });
+loadMe().catch(() => { });  // fills in the name in the sidebar
+showPage(location.hash.slice(1) || "home");
