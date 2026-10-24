@@ -41,6 +41,11 @@ def test_login_returns_role_and_permissions(admin):
     assert admin.get("/").status_code == 200
 
 
+def test_health_check_needs_no_login(client):
+    r = client.get("/health")
+    assert r.status_code == 200 and r.get_json() == {"status": "ok", "database": "ok"}
+
+
 def test_writes_must_be_json(admin):
     r = admin.post("/api/patients", data={"first_name": "x"})
     assert r.status_code == 415
@@ -226,7 +231,8 @@ def test_new_doctor_with_login(admin, client):
     assert r.status_code == 409
 
     # The login is made on the Settings page
-    r = admin.post("/api/settings/staff-accounts", json={"staff_id": staff_id, "role": "Doctor", "password": "new-doc-2026"})
+    account = {"staff_id": staff_id, "role": "Doctor", "password": "new-doc-2026"}
+    r = admin.post("/api/settings/staff-accounts", json=account)
     assert r.status_code == 201 and r.get_json()["username"] == "new.doctor"
 
     admin.post("/api/auth/logout", json={})

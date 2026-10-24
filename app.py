@@ -31,6 +31,17 @@ def create_app(config=None):
     register_blueprints(app)
     register_error_handlers(app)
     register_commands(app)
+
+    @app.get("/health")
+    def health():
+        """For Docker and uptime monitors: is the app up, and can it reach the database?"""
+        try:
+            db.query_one("SELECT 1")
+        except Exception:
+            app.logger.exception("Health check: database unreachable")
+            return {"status": "error", "database": "unreachable"}, 503
+        return {"status": "ok", "database": "ok"}
+
     return app
 
 
