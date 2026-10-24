@@ -1,6 +1,6 @@
 [project]
 name = "medicore-hms"
-version = "1.0.0"
+version = "1.0.1"
 description = "Hospital management system: role-based staff app and online patient portal (Flask + MySQL)"
 readme = "README.md"
 license = { file = "LICENSE" }

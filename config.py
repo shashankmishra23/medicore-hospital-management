@@ -32,9 +32,9 @@ class Config:
     HOSPITAL = {
         "name": os.environ.get("HOSPITAL_NAME", "MediCore Hospital"),
         "tagline": os.environ.get("HOSPITAL_TAGLINE", "Modern care, one click away"),
-        "phone": os.environ.get("HOSPITAL_PHONE", "+91 512 300 100"),
+        "phone": os.environ.get("HOSPITAL_PHONE", "+91 522 300 100"),
         "email": os.environ.get("HOSPITAL_EMAIL", "care@medicore.example"),
-        "address": os.environ.get("HOSPITAL_ADDRESS", "Civil Lines, Kanpur, Uttar Pradesh"),
+        "address": os.environ.get("HOSPITAL_ADDRESS", "Gomti Nagar, Lucknow, Uttar Pradesh"),
     }
 
     SESSION_COOKIE_HTTPONLY = True

@@ -372,12 +372,12 @@ ORDER BY stock_qty ASC;
 -- ------------------------------------------------------------
 
 INSERT INTO departments (dept_name, location, phone) VALUES
-('Cardiology',    'Block A, Floor 2', '0512-300-101'),
-('Neurology',     'Block B, Floor 1', '0512-300-102'),
-('Orthopedics',   'Block C, Floor 3', '0512-300-103'),
-('Pediatrics',    'Block A, Floor 1', '0512-300-104'),
-('General Medicine','Block D, Floor 1','0512-300-105'),
-('Pharmacy',      'Ground Floor',     '0512-300-200');
+('Cardiology',    'Block A, Floor 2', '0522-300-101'),
+('Neurology',     'Block B, Floor 1', '0522-300-102'),
+('Orthopedics',   'Block C, Floor 3', '0522-300-103'),
+('Pediatrics',    'Block A, Floor 1', '0522-300-104'),
+('General Medicine','Block D, Floor 1','0522-300-105'),
+('Pharmacy',      'Ground Floor',     '0522-300-200');
 
 INSERT INTO wards (ward_name, ward_type, dept_id, total_beds, available_beds, floor_no) VALUES
 ('Cardiac Ward',     'ICU',      1, 10, 4, 2),
@@ -419,18 +419,18 @@ INSERT INTO doctors (staff_id, specialization, qualification, license_number, co
 (7,'Pediatrics',   'MD Pediatrics, MRCP',   'MCI-PEDI-004', 600.00, 'Mon,Tue,Wed,Thu,Fri');
 
 INSERT INTO patients (first_name,last_name,dob,gender,blood_group,phone,email,address,emergency_contact_name,emergency_contact_phone) VALUES
-('Ramesh',  'Kumar',   '1965-03-10','Male',  'B+','9811111111','ramesh.k@email.com',  'Civil Lines, Kanpur','Suresh Kumar',   '9811111112'),
-('Anita',   'Patel',   '1990-07-22','Female','A+','9822222222','anita.p@email.com',   'Swaroop Nagar, Kanpur','Rajesh Patel', '9822222223'),
-('Vikas',   'Tiwari',  '1978-11-05','Male',  'O-','9833333333','vikas.t@email.com',   'Kidwai Nagar, Kanpur','Meena Tiwari',  '9833333334'),
-('Shalini', 'Mishra',  '2001-01-15','Female','AB+','9844444444','shalini.m@email.com','Kakadeo, Kanpur',     'Sunil Mishra',  '9844444445'),
-('Amit',    'Srivastava','1955-06-28','Male', 'A-','9855555555','amit.s@email.com',   'Armapur, Kanpur',     'Rita Srivastava','9855555556');
+('Ramesh',  'Kumar',   '1965-03-10','Male',  'B+','9811111111','ramesh.k@email.com',  'Hazratganj, Lucknow','Suresh Kumar',   '9811111112'),
+('Anita',   'Patel',   '1990-07-22','Female','A+','9822222222','anita.p@email.com',   'Aliganj, Lucknow','Rajesh Patel', '9822222223'),
+('Vikas',   'Tiwari',  '1978-11-05','Male',  'O-','9833333333','vikas.t@email.com',   'Indira Nagar, Lucknow','Meena Tiwari',  '9833333334'),
+('Shalini', 'Mishra',  '2001-01-15','Female','AB+','9844444444','shalini.m@email.com','Mahanagar, Lucknow',     'Sunil Mishra',  '9844444445'),
+('Amit',    'Srivastava','1955-06-28','Male', 'A-','9855555555','amit.s@email.com',   'Alambagh, Lucknow',     'Rita Srivastava','9855555556');
 
 INSERT INTO patients (first_name,last_name,dob,gender,blood_group,phone,email,address,emergency_contact_name,emergency_contact_phone,allergies,medical_history) VALUES
-('Pooja',   'Saxena',  '1988-09-14','Female','O+','9866666666','pooja.s@email.com',  'Govind Nagar, Kanpur','Arvind Saxena', '9866666667','Penicillin', NULL),
-('Rahul',   'Yadav',   '1995-12-02','Male',  'B-','9877777777','rahul.y@email.com',  'Kalyanpur, Kanpur',   'Sunita Yadav',  '9877777778', NULL, NULL),
-('Meera',   'Pandey',  '1972-04-19','Female','A+','9888888888', NULL,                'Shastri Nagar, Kanpur','Alok Pandey',  '9888888889', NULL, 'Type 2 diabetes, high blood pressure'),
-('Arjun',   'Chauhan', '2015-08-30','Male',  'O+','9899999999', NULL,                'Barra, Kanpur',       'Kiran Chauhan', '9899999990','Peanuts', 'Asthma'),
-('Fatima',  'Khan',    '1983-02-11','Female','AB-','9800000000','fatima.k@email.com','Chaman Ganj, Kanpur', 'Imran Khan',    '9800000001', NULL, 'Migraine');
+('Pooja',   'Saxena',  '1988-09-14','Female','O+','9866666666','pooja.s@email.com',  'Vikas Nagar, Lucknow','Arvind Saxena', '9866666667','Penicillin', NULL),
+('Rahul',   'Yadav',   '1995-12-02','Male',  'B-','9877777777','rahul.y@email.com',  'Jankipuram, Lucknow',   'Sunita Yadav',  '9877777778', NULL, NULL),
+('Meera',   'Pandey',  '1972-04-19','Female','A+','9888888888', NULL,                'Rajajipuram, Lucknow','Alok Pandey',  '9888888889', NULL, 'Type 2 diabetes, high blood pressure'),
+('Arjun',   'Chauhan', '2015-08-30','Male',  'O+','9899999999', NULL,                'Chinhat, Lucknow',       'Kiran Chauhan', '9899999990','Peanuts', 'Asthma'),
+('Fatima',  'Khan',    '1983-02-11','Female','AB-','9800000000','fatima.k@email.com','Aminabad, Lucknow', 'Imran Khan',    '9800000001', NULL, 'Migraine');
 
 INSERT INTO patient_admissions (patient_id,room_id,admitted_by,admission_date,diagnosis,status) VALUES
 (1,2,1,NOW() - INTERVAL 10 DAY,'Acute Myocardial Infarction','Admitted'),
