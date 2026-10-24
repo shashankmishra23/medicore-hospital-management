@@ -93,9 +93,9 @@ Built with Flask and MySQL, tested in CI, and runnable with one Docker command.
 
 | Dashboard | Patient file |
 |---|---|
-| ![Dashboard](docs/screenshots/dashboard.jpg) | ![Patient file](docs/screenshots/patient-file.jpg) |
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Patient file](docs/screenshots/patient-file.png) |
 | **Appointments** (online bookings flagged) | **Wards and rooms** |
-| ![Appointments](docs/screenshots/appointments.jpg) | ![Wards](docs/screenshots/wards.jpg) |
+| ![Appointments](docs/screenshots/appointments.png) | ![Wards](docs/screenshots/wards.png) |
 
 </details>
 
@@ -105,7 +105,7 @@ Built with Flask and MySQL, tested in CI, and runnable with one Docker command.
 
 | Home | Online booking |
 |---|---|
-| ![Portal home](docs/screenshots/portal-home.jpg) | ![Booking](docs/screenshots/portal-booking.jpg) |
+| ![Portal home](docs/screenshots/portal-home.png) | ![Booking](docs/screenshots/portal-booking.png) |
 
 </details>
 
@@ -115,9 +115,9 @@ Built with Flask and MySQL, tested in CI, and runnable with one Docker command.
 
 | Sign in by role | Settings: passwords and accounts |
 |---|---|
-| ![Login](docs/screenshots/login.jpg) | ![Settings](docs/screenshots/settings.jpg) |
+| ![Login](docs/screenshots/login.png) | ![Settings](docs/screenshots/settings.png) |
 | **Activity log** | |
-| ![Activity log](docs/screenshots/activity-log.jpg) | |
+| ![Activity log](docs/screenshots/activity-log.png) | |
 
 </details>
 
