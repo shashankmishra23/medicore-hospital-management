@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ hospital.name }} — Hospital Management System</title>
+  <script>window.HOSPITAL = {{ hospital | tojson }};</script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+  <script>
+    (function () {
+      try {
+        document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+      } catch (e) { }
+    })();
+  </script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  {% for js in ['core', 'dashboard', 'patients', 'appointments', 'admissions', 'prescriptions', 'staff', 'pharmacy', 'billing', 'wards', 'activity', 'main'] %}
+  <script src="{{ url_for('static', filename='js/' ~ js ~ '.js') }}" defer></script>
+  {% endfor %}
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏥</div>
+      <div class="brand-title">{{ hospital.name }}</div>
+      <div class="brand-sub">Staff Portal · v4.0</div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">Overview</div>
+        <div class="nav-item" data-page="dashboard" onclick="showPage('dashboard')"><span class="nav-icon">⊞</span> Dashboard</div>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">Patient Care</div>
+        <div class="nav-item" data-page="patients" data-perm="view.patients" onclick="showPage('patients')"><span class="nav-icon">👤</span> Patients</div>
+        <div class="nav-item" data-page="appointments" data-perm="view.appointments" onclick="showPage('appointments')"><span class="nav-icon">📅</span> Appointments</div>
+        <div class="nav-item" data-page="admissions" data-perm="view.admissions" onclick="showPage('admissions')"><span class="nav-icon">🛏</span> Admissions</div>
+        <div class="nav-item" data-page="prescriptions" data-perm="view.prescriptions" onclick="showPage('prescriptions')"><span class="nav-icon">℞</span> Prescriptions</div>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">Hospital</div>
+        <div class="nav-item" data-page="doctors" data-perm="view.staff" onclick="showPage('doctors')"><span class="nav-icon">⚕</span> Doctors & Staff</div>
+        <div class="nav-item" data-page="pharmacy" data-perm="view.pharmacy" onclick="showPage('pharmacy')"><span class="nav-icon">💊</span> Pharmacy</div>
+        <div class="nav-item" data-page="billing" data-perm="view.billing" onclick="showPage('billing')"><span class="nav-icon">₹</span> Billing & Payments</div>
+        <div class="nav-item" data-page="wards" data-perm="view.wards" onclick="showPage('wards')"><span class="nav-icon">🏨</span> Wards & Rooms</div>
+      </div>
+      <div class="nav-section" style="margin-top:8px;" data-perm="view.activity">
+        <div class="nav-label">Administration</div>
+        <div class="nav-item" data-page="activity" onclick="showPage('activity')"><span class="nav-icon">📜</span> Activity Log</div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar"></div>
+        <div style="min-width:0">
+          <div style="font-size:0.8rem;font-weight:600" id="user-name"></div>
+          <div style="font-size:0.68rem;color:var(--muted)" id="user-role"></div>
+        </div>
+        <button class="logout-btn" onclick="openChangePassword()" title="Change password">🔑</button>
+        <button class="logout-btn" style="margin-left:4px" onclick="logout()" title="Log out">Log out</button>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" onclick="toggleNav(false)"></div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="notif-btn menu-toggle" onclick="toggleNav()" title="Menu">☰</div>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <div class="topbar-date text-mono" id="current-date"></div>
+        <div class="notif-btn" id="theme-btn" onclick="toggleTheme()" title="Switch light / dark mode">☀️</div>
+        <div class="notif-wrap">
+          <div class="notif-btn" onclick="toggleAlerts(event)" title="Alerts">🔔<span class="notif-count"
+              id="notif-count" style="display:none">0</span></div>
+          <div class="notif-panel" id="notif-panel">
+            <div class="notif-head"><span>Alerts</span><span class="text-muted text-sm" id="notif-summary"></span></div>
+            <div id="notif-list">
+              <div class="empty-state">Loading…</div>
+            </div>
+          </div>
+        </div>
+        <div class="menu-wrap" id="new-wrap" hidden>
+          <button class="btn btn-primary" onclick="toggleNewMenu(event)">+ <span class="new-label">New</span></button>
+          <div class="menu" id="new-menu"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API ERROR BANNER -->
+    <div id="api-error" class="error-banner" style="margin:16px 32px 0;">
+      ⚠ Cannot connect to the server. Make sure <code>python app.py</code> is running.
+    </div>
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page" id="page-dashboard">
+      <div class="section-title" id="greeting">Welcome 👋</div>
+      <div class="section-sub">Here's what's happening at {{ hospital.name }} today.</div>
+      <div id="dashboard-loading" class="loading">
+        <div class="spinner"></div>
+      </div>
+      <div id="dashboard-stats" class="stats-grid" style="display:none"></div>
+      <div id="dashboard-content" style="display:none">
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Revenue — Last 6 Months</div></div>
+            <div class="card-body"><div class="chart-box"><canvas id="chart-revenue"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div class="card-title">Appointments — Last 30 Days</div></div>
+            <div class="card-body"><div class="chart-box"><canvas id="chart-appts"></canvas></div></div>
+          </div>
+        </div>
+        <div class="grid-2" id="dashboard-lists">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Today's Appointments</div>
+              <button class="btn btn-ghost btn-sm" onclick="showPage('appointments')">View all</button>
+            </div>
+            <div id="today-appts" class="card-body"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Low Stock Alerts</div>
+              <button class="btn btn-ghost btn-sm" onclick="showPage('pharmacy')">Pharmacy</button>
+            </div>
+            <div id="low-stock-list" class="card-body"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Bed Occupancy by Ward</div></div>
+          <div class="card-body"><div class="chart-box"><canvas id="chart-beds"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PATIENTS ── -->
+    <div class="page" id="page-patients">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Patients</div>
+          <div class="section-sub">Patient records, history and admissions. Click a row to open the patient file.</div>
+        </div>
+        <button class="btn btn-primary" data-perm="patients.write" onclick="openPatientForm()">+ New Patient</button>
+      </div>
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span>🔍</span>
+          <input type="text" id="patient-search" placeholder="Search by name, phone or patient ID (P-001)…" oninput="searchPatients()">
+        </div>
+      </div>
+      <div id="patients-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Patient Name</th><th>Age/Gender</th><th>Blood</th><th>Contact</th><th>Status</th><th>Ward</th><th></th></tr>
+            </thead>
+            <tbody id="patients-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APPOINTMENTS ── -->
+    <div class="page" id="page-appointments">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Appointments</div>
+          <div class="section-sub">Schedule and manage patient appointments</div>
+        </div>
+        <button class="btn btn-primary" data-perm="appointments.write" onclick="openAppointmentForm()">+ Book Appointment</button>
+      </div>
+      <div class="search-bar chip-row" id="appt-chips">
+        <div class="chip" data-value="" onclick="filterAppts('')">All</div>
+        <div class="chip" data-value="today" onclick="filterAppts('today')">Today</div>
+        <div class="chip" data-value="Scheduled" onclick="filterAppts('Scheduled')">Scheduled</div>
+        <div class="chip" data-value="Completed" onclick="filterAppts('Completed')">Completed</div>
+        <div class="chip" data-value="Cancelled" onclick="filterAppts('Cancelled')">Cancelled</div>
+        <div class="chip" data-value="No-Show" onclick="filterAppts('No-Show')">No-Show</div>
+        <div class="chip" data-value="online" onclick="filterAppts('online')">🌐 Booked online</div>
+      </div>
+      <div id="appts-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Patient</th><th>Doctor</th><th>Date & Time</th><th>Reason</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="appts-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ADMISSIONS ── -->
+    <div class="page" id="page-admissions">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Admissions</div>
+          <div class="section-sub">Patients staying in the hospital. Discharging frees the bed and can create the bill.</div>
+        </div>
+        <button class="btn btn-primary" data-perm="admissions.write" onclick="openAdmitForm()">+ Admit Patient</button>
+      </div>
+      <div class="search-bar chip-row" id="adm-chips">
+        <div class="chip" data-value="Admitted" onclick="filterAdmissions('Admitted')">Currently admitted</div>
+        <div class="chip" data-value="Discharged" onclick="filterAdmissions('Discharged')">Discharged</div>
+        <div class="chip" data-value="" onclick="filterAdmissions('')">All</div>
+      </div>
+      <div id="adm-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Patient</th><th>Room</th><th>Doctor</th><th>Admitted</th><th>Days</th><th>Diagnosis</th><th></th></tr>
+            </thead>
+            <tbody id="adm-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRESCRIPTIONS ── -->
+    <div class="page" id="page-prescriptions">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Prescriptions</div>
+          <div class="section-sub">Written by doctors, dispensed by the pharmacy (stock goes down automatically)</div>
+        </div>
+        <button class="btn btn-primary" data-perm="prescriptions.write" onclick="openPrescriptionForm()">+ Write Prescription</button>
+      </div>
+      <div class="search-bar chip-row" id="rx-chips">
+        <div class="chip" data-value="Pending" onclick="filterPrescriptions('Pending')">Waiting</div>
+        <div class="chip" data-value="Dispensed" onclick="filterPrescriptions('Dispensed')">Dispensed</div>
+        <div class="chip" data-value="" onclick="filterPrescriptions('')">All</div>
+      </div>
+      <div id="rx-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>No.</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Medicines</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="rx-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DOCTORS & STAFF ── -->
+    <div class="page" id="page-doctors">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Doctors & Staff</div>
+          <div class="section-sub">Medical and administrative personnel</div>
+        </div>
+        <button class="btn btn-primary" data-perm="staff.write" onclick="openStaffForm()">+ Add Staff</button>
+      </div>
+      <div class="search-bar chip-row" id="staff-chips">
+        <div class="chip" data-value="doctors" onclick="filterStaff('doctors')">Doctors</div>
+        <div class="chip" data-value="all" onclick="filterStaff('all')">All staff</div>
+      </div>
+      <div id="doctors-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap" id="staff-table"></div>
+      </div>
+    </div>
+
+    <!-- ── PHARMACY ── -->
+    <div class="page" id="page-pharmacy">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Pharmacy</div>
+          <div class="section-sub">Medicine stock, expiry dates and restocking</div>
+        </div>
+        <button class="btn btn-primary" data-perm="medicines.write" onclick="openMedicineForm()">+ Add Medicine</button>
+      </div>
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span>🔍</span>
+          <input type="text" id="medicine-search" placeholder="Search medicines…" oninput="pharmaFilter = ''; searchMedicines()">
+        </div>
+        <div class="chip-row" id="pharma-chips">
+          <div class="chip" data-value="" onclick="filterPharmacy('')">All</div>
+          <div class="chip" data-value="low" onclick="filterPharmacy('low')">Low stock</div>
+        </div>
+      </div>
+      <div id="pharma-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Medicine</th><th>Category</th><th>Unit Price</th><th>Stock</th><th>Reorder Level</th><th>Expiry</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="pharma-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BILLING ── -->
+    <div class="page" id="page-billing">
+      <div class="page-head">
+        <div>
+          <div class="section-title">Billing & Payments</div>
+          <div class="section-sub">Track invoices, payments, and balances</div>
+        </div>
+        <button class="btn btn-primary" data-perm="billing.write" onclick="openBillForm()">+ Create Bill</button>
+      </div>
+      <div class="search-bar chip-row" id="bill-chips">
+        <div class="chip" data-value="" onclick="filterBills('')">All</div>
+        <div class="chip" data-value="Pending" onclick="filterBills('Pending')">Unpaid</div>
+        <div class="chip" data-value="Partial" onclick="filterBills('Partial')">Part paid</div>
+        <div class="chip" data-value="Paid" onclick="filterBills('Paid')">Paid</div>
+      </div>
+      <div id="billing-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Bill</th><th>Patient</th><th>Date</th><th>Due</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="billing-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── WARDS ── -->
+    <div class="page" id="page-wards">
+      <div class="section-title">Wards & Rooms</div>
+      <div class="section-sub">Bed availability and room allocation. Click a free room to admit a patient.</div>
+      <div id="wards-error" class="error-banner"></div>
+      <div id="wards-content"></div>
+    </div>
+
+    <!-- ── ACTIVITY LOG ── -->
+    <div class="page" id="page-activity">
+      <div class="section-title">Activity Log</div>
+      <div class="section-sub">Every sign-in and change, newest first (last 300). Only admins can see this.</div>
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <span>🔍</span>
+          <input type="text" id="activity-search" placeholder="Search by person, role or action…" oninput="searchActivity()">
+        </div>
+      </div>
+      <div id="activity-error" class="error-banner"></div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>When</th><th>Who</th><th>Action</th><th>Details</th><th>IP Address</th></tr>
+            </thead>
+            <tbody id="activity-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONE POPUP, FILLED BY WHICHEVER FORM IS OPENED -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" id="modal-box" role="dialog" aria-modal="true"></div>
+  </div>
+</body>
+
+</html>
