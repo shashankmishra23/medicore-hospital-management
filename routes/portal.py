@@ -215,8 +215,11 @@ def cancel(aid):
             abort(404, "Appointment not found.")
         if appt["status"] != "Scheduled" or appt["appointment_date"] < date.today():
             abort(409, "Only upcoming appointments can be cancelled.")
-        cur.execute("UPDATE appointments SET status='Cancelled', notes=CONCAT_WS('\n', notes, 'Cancelled by patient online') "
-                    "WHERE appointment_id=%s", (aid,))
+        cur.execute("""
+            UPDATE appointments
+            SET status='Cancelled', notes=CONCAT_WS('\n', notes, 'Cancelled by patient online')
+            WHERE appointment_id=%s
+        """, (aid,))
     audit("Cancelled appointment online", f"A-{aid:03d}")
     return jsonify({"success": True})
 

@@ -1,0 +1,22 @@
+[project]
+name = "medicore-hms"
+version = "1.0.0"
+description = "Hospital management system: role-based staff app and online patient portal (Flask + MySQL)"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Shashank Mishra" }]
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "auth", "audit", "config", "db", "routes", "utils"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
