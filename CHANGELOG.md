@@ -2,6 +2,13 @@
 
 All notable changes to this project are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [semantic versioning](https://semver.org/).
 
+## [1.0.1] - 2026-10-25
+
+### Changed
+
+- The sample hospital is now in Gomti Nagar, Lucknow (address, phone and department numbers), and the sample patients live in Lucknow.
+- README screenshots retaken with the new address and a new sample patient.
+
 ## [1.0.0] - 2026-10-25
 
 First public release.
@@ -20,4 +27,5 @@ First public release.
 - Docker setup and a `/health` endpoint.
 - Test suite (40 tests) and CI with lint, tests against MySQL 8 and a Docker smoke test.
 
+[1.0.1]: https://github.com/shashankmishra23/medicore-hospital-management/releases/tag/v1.0.1
 [1.0.0]: https://github.com/shashankmishra23/medicore-hospital-management/releases/tag/v1.0.0
