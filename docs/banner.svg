@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="MediCore HMS: hospital management system">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b0f1a"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#00d4aa"/>
+    </linearGradient>
+    <radialGradient id="glow1" cx="0.12" cy="0.1" r="0.5">
+      <stop offset="0" stop-color="#00d4aa" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#00d4aa" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow2" cx="0.92" cy="0.95" r="0.5">
+      <stop offset="0" stop-color="#3b82f6" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="320" rx="24" fill="url(#bg)"/>
+  <rect width="1280" height="320" rx="24" fill="url(#glow1)"/>
+  <rect width="1280" height="320" rx="24" fill="url(#glow2)"/>
+
+  <!-- logo: rounded square with a medical cross -->
+  <g transform="translate(96 104)">
+    <rect width="112" height="112" rx="28" fill="url(#accent)"/>
+    <rect x="44" y="22" width="24" height="68" rx="6" fill="#0b0f1a"/>
+    <rect x="22" y="44" width="68" height="24" rx="6" fill="#0b0f1a"/>
+  </g>
+
+  <g font-family="Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif">
+    <text x="252" y="150" font-size="64" font-weight="700" fill="#e8edf5">MediCore HMS</text>
+    <text x="254" y="196" font-size="26" fill="#9aa8c4">Hospital management system: staff app + online patient portal</text>
+
+    <g font-size="17" font-weight="600">
+      <rect x="254" y="226" width="156" height="36" rx="18" fill="#00d4aa" fill-opacity="0.14" stroke="#00d4aa" stroke-opacity="0.4"/>
+      <text x="332" y="250" text-anchor="middle" fill="#00d4aa">Role-based access</text>
+      <rect x="422" y="226" width="160" height="36" rx="18" fill="#3b82f6" fill-opacity="0.14" stroke="#3b82f6" stroke-opacity="0.4"/>
+      <text x="502" y="250" text-anchor="middle" fill="#60a5fa">Online booking</text>
+      <rect x="594" y="226" width="150" height="36" rx="18" fill="#a855f7" fill-opacity="0.14" stroke="#a855f7" stroke-opacity="0.4"/>
+      <text x="669" y="250" text-anchor="middle" fill="#c084fc">Activity log</text>
+      <rect x="756" y="226" width="170" height="36" rx="18" fill="#f59e0b" fill-opacity="0.14" stroke="#f59e0b" stroke-opacity="0.4"/>
+      <text x="841" y="250" text-anchor="middle" fill="#fbbf24">Docker + CI</text>
+    </g>
+
+    <text x="1184" y="70" font-size="18" text-anchor="end" fill="#6b7a99">Flask · MySQL · JavaScript</text>
+  </g>
+</svg>
