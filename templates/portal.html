@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patient Portal · {{ hospital.name }}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+  <script>
+    (function () {
+      try {
+        document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+      } catch (e) { }
+    })();
+    window.HOSPITAL = {{ hospital | tojson }};
+    window.LOGIN_URL = "/login#patient";
+  </script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/core.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/portal.js') }}" defer></script>
+</head>
+
+<body>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏥</div>
+      <div class="brand-title">{{ hospital.name }}</div>
+      <div class="brand-sub">Patient Portal</div>
+    </div>
+    <nav>
+      <div class="nav-section">
+        <div class="nav-label">My Health</div>
+        <div class="nav-item" data-page="home" onclick="showPage('home')"><span class="nav-icon">🏠</span> Home</div>
+        <div class="nav-item" data-page="book" onclick="showPage('book')"><span class="nav-icon">➕</span> Book Appointment</div>
+        <div class="nav-item" data-page="appointments" onclick="showPage('appointments')"><span class="nav-icon">📅</span> My Appointments</div>
+        <div class="nav-item" data-page="prescriptions" onclick="showPage('prescriptions')"><span class="nav-icon">℞</span> Prescriptions</div>
+        <div class="nav-item" data-page="bills" onclick="showPage('bills')"><span class="nav-icon">₹</span> Bills</div>
+        <div class="nav-item" data-page="profile" onclick="showPage('profile')"><span class="nav-icon">👤</span> My Profile</div>
+      </div>
+      <div class="nav-section" style="margin-top:8px;">
+        <div class="nav-label">Need help?</div>
+        <div class="text-sm text-muted" style="padding:0 12px;line-height:1.7">📞 {{ hospital.phone }}<br>✉ {{ hospital.email }}</div>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar"></div>
+        <div style="min-width:0">
+          <div style="font-size:0.8rem;font-weight:600" id="user-name"></div>
+          <div style="font-size:0.68rem;color:var(--muted)">Patient</div>
+        </div>
+        <button class="logout-btn" onclick="openChangePassword()" title="Change password">🔑</button>
+        <button class="logout-btn" style="margin-left:4px" onclick="logout()" title="Log out">Log out</button>
+      </div>
+    </div>
+  </aside>
+  <div class="sidebar-backdrop" onclick="toggleNav(false)"></div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="notif-btn menu-toggle" onclick="toggleNav()" title="Menu">☰</div>
+      <div class="topbar-title" id="topbar-title">Home</div>
+      <div class="topbar-actions">
+        <div class="notif-btn" id="theme-btn" onclick="toggleTheme()" title="Switch light / dark mode">☀️</div>
+        <button class="btn btn-primary" onclick="showPage('book')">📅 <span class="new-label">Book</span></button>
+      </div>
+    </div>
+
+    <div id="api-error" class="error-banner" style="margin:16px 32px 0;">
+      ⚠ Cannot connect to the server. Please try again in a moment.
+    </div>
+
+    <!-- ── HOME ── -->
+    <div class="page" id="page-home">
+      <div class="section-title" id="greeting">Welcome 👋</div>
+      <div class="section-sub">Your health portal at {{ hospital.name }}</div>
+      <div id="home-content"><div class="loading"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- ── BOOK ── -->
+    <div class="page" id="page-book">
+      <div class="section-title">Book an Appointment</div>
+      <div class="section-sub">Choose a doctor, a day and a free time. You can cancel any time before the visit.</div>
+      <div id="book-error" class="error-banner"></div>
+
+      <div class="step-title"><span class="step-num">1</span> Choose a doctor</div>
+      <div class="search-bar chip-row" id="spec-chips"></div>
+      <div class="doctor-grid" id="doctor-grid"><div class="loading"><div class="spinner"></div></div></div>
+
+      <div id="step-date" hidden>
+        <div class="step-title"><span class="step-num">2</span> Pick a day</div>
+        <div class="date-strip" id="date-strip"></div>
+      </div>
+
+      <div id="step-time" hidden>
+        <div class="step-title"><span class="step-num">3</span> Choose a time</div>
+        <div class="slot-grid" id="slot-grid"></div>
+      </div>
+
+      <div id="step-reason" hidden>
+        <div class="step-title"><span class="step-num">4</span> Reason for visit <span class="text-muted text-sm">(optional)</span></div>
+        <textarea id="book-reason" rows="2" placeholder="e.g. Fever for 3 days, routine check-up…"></textarea>
+      </div>
+
+      <div class="booking-bar" id="booking-bar" hidden>
+        <div>
+          <div class="info-label">Your booking</div>
+          <div id="booking-summary" style="font-weight:600;margin-top:2px"></div>
+        </div>
+        <button class="btn btn-primary" id="book-btn" onclick="confirmBooking()">Confirm Booking</button>
+      </div>
+    </div>
+
+    <!-- ── MY APPOINTMENTS ── -->
+    <div class="page" id="page-appointments">
+      <div class="section-title">My Appointments</div>
+      <div class="section-sub">Upcoming visits and your history</div>
+      <div class="search-bar chip-row" id="pa-chips">
+        <div class="chip" data-value="upcoming" onclick="filterMyAppts('upcoming')">Upcoming</div>
+        <div class="chip" data-value="past" onclick="filterMyAppts('past')">Past & cancelled</div>
+      </div>
+      <div id="my-appts"></div>
+    </div>
+
+    <!-- ── PRESCRIPTIONS ── -->
+    <div class="page" id="page-prescriptions">
+      <div class="section-title">My Prescriptions</div>
+      <div class="section-sub">Medicines your doctors have prescribed. Print them for any pharmacy.</div>
+      <div id="my-rx"></div>
+    </div>
+
+    <!-- ── BILLS ── -->
+    <div class="page" id="page-bills">
+      <div class="section-title">My Bills</div>
+      <div class="section-sub">Pay at the hospital billing counter by cash, card or UPI. Receipts are available here.</div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Bill</th><th>Date</th><th>Due</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+            <tbody id="my-bills"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div class="page" id="page-profile">
+      <div class="section-title">My Profile</div>
+      <div class="section-sub">Keep your contact details and allergies up to date. They help our doctors in an emergency.</div>
+      <div id="profile-content"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal" id="modal-box" role="dialog" aria-modal="true"></div>
+  </div>
+</body>
+
+</html>

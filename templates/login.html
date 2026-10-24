@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign in · {{ hospital.name }}</title>
+  <meta name="description" content="{{ hospital.name }} — staff login and online patient portal">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+  <script>
+    (function () {
+      try {
+        document.documentElement.setAttribute("data-theme", localStorage.getItem("theme") || "dark");
+      } catch (e) { }
+    })();
+  </script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/login.js') }}" defer></script>
+</head>
+
+<body class="auth-page">
+  <div class="notif-btn auth-theme" id="theme-btn" onclick="toggleTheme()" title="Switch light / dark mode">☀️</div>
+
+  <div class="auth-shell">
+    <!-- LEFT: who we are -->
+    <section class="auth-hero">
+      <div class="brand-icon">🏥</div>
+      <div>
+        <div class="hero-name">{{ hospital.name }}</div>
+        <div class="hero-tagline">{{ hospital.tagline }}</div>
+      </div>
+      <div class="hero-points">
+        <div class="hero-point"><span>📅</span><div><b>Book appointments online, 24/7</b>Pick your doctor, date and time slot in under a minute.</div></div>
+        <div class="hero-point"><span>📄</span><div><b>Your records in one place</b>Prescriptions, bills and visit history, any time.</div></div>
+        <div class="hero-point"><span>🔒</span><div><b>Secure, role-based staff access</b>Every team member sees only what their job needs.</div></div>
+      </div>
+      <div class="hero-contact">📞 {{ hospital.phone }} · ✉ {{ hospital.email }}<br>📍 {{ hospital.address }}</div>
+    </section>
+
+    <!-- RIGHT: sign in -->
+    <section class="auth-panel">
+      <div class="login-card">
+        <div class="seg" role="tablist">
+          <button type="button" data-tab="staff" onclick="showTab('staff')">🩺 Staff</button>
+          <button type="button" data-tab="patient" onclick="showTab('patient')">👤 Patient</button>
+        </div>
+
+        <!-- STAFF, step 1: choose a role -->
+        <div id="staff-roles">
+          <div class="login-title">Staff sign in</div>
+          <div class="login-sub">Choose your role to continue</div>
+          <div class="role-grid" id="role-grid"></div>
+        </div>
+
+        <!-- STAFF, step 2: username and password -->
+        <form id="staff-form" hidden>
+          <button type="button" class="back-link" onclick="chooseRole(null)">← Change role</button>
+          <div class="role-chosen">
+            <div class="role-icon" id="role-icon"></div>
+            <div>
+              <div class="login-title" id="role-title"></div>
+              <div class="login-sub" id="role-desc"></div>
+            </div>
+          </div>
+          <div class="error-banner" id="staff-error"></div>
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input id="username" name="username" autocomplete="username" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <div class="pw-wrap">
+              <input id="password" name="password" type="password" autocomplete="current-password" required>
+              <button type="button" class="pw-toggle" onclick="togglePassword(this)">SHOW</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit" id="staff-btn">Sign in</button>
+          <div class="login-foot">Forgot your password? Ask your hospital administrator.</div>
+        </form>
+
+        <!-- PATIENT: sign in -->
+        <form id="patient-login" hidden>
+          <div>
+            <div class="login-title">Patient portal</div>
+            <div class="login-sub">Book appointments and see your prescriptions and bills</div>
+          </div>
+          <div class="error-banner" id="patient-error"></div>
+          <div class="form-group">
+            <label for="p_email">Email</label>
+            <input id="p_email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <div class="form-group">
+            <label for="p_password">Password</label>
+            <div class="pw-wrap">
+              <input id="p_password" name="password" type="password" autocomplete="current-password" required>
+              <button type="button" class="pw-toggle" onclick="togglePassword(this)">SHOW</button>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit">Sign in</button>
+          <div class="login-foot">New patient? <button type="button" class="text-link" onclick="showTab('register')">Create an account</button></div>
+        </form>
+
+        <!-- PATIENT: create account -->
+        <form id="patient-register" hidden>
+          <div>
+            <div class="login-title">Create your account</div>
+            <div class="login-sub">Takes a minute. Then book your first appointment.</div>
+          </div>
+          <div class="error-banner" id="register-error"></div>
+          <div class="form-grid">
+            <div class="form-group"><label for="r_first">First name</label><input id="r_first" name="first_name" autocomplete="given-name" required></div>
+            <div class="form-group"><label for="r_last">Last name</label><input id="r_last" name="last_name" autocomplete="family-name" required></div>
+            <div class="form-group"><label for="r_dob">Date of birth</label><input id="r_dob" name="dob" type="date" required></div>
+            <div class="form-group"><label for="r_gender">Gender</label>
+              <select id="r_gender" name="gender"><option>Female</option><option>Male</option><option>Other</option></select></div>
+            <div class="form-group full"><label for="r_phone">Mobile number</label><input id="r_phone" name="phone" type="tel" autocomplete="tel" required></div>
+            <div class="form-group full"><label for="r_email">Email</label><input id="r_email" name="email" type="email" autocomplete="email" required></div>
+            <div class="form-group full"><label for="r_password">Password</label>
+              <div class="pw-wrap">
+                <input id="r_password" name="password" type="password" autocomplete="new-password" required>
+                <button type="button" class="pw-toggle" onclick="togglePassword(this)">SHOW</button>
+              </div>
+              <div class="form-hint">At least 8 characters, with letters and numbers</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit">Create account</button>
+          <div class="login-foot">Already registered? <button type="button" class="text-link" onclick="showTab('patient')">Sign in</button></div>
+          <div class="login-foot">Visited us before? Ask reception to connect your old records to the portal.</div>
+        </form>
+      </div>
+    </section>
+  </div>
+</body>
+
+</html>
