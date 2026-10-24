@@ -29,9 +29,9 @@ def test_pages_and_api_need_login(client):
 
 
 def test_wrong_password_is_rejected(client):
-    r = client.post("/api/auth/login", json={"username": "admin", "password": "wrong"})
+    r = client.post("/api/auth/login", json={"name": "Shashank Mishra", "password": "wrong"})
     assert r.status_code == 401
-    assert r.get_json()["error"] == "Wrong username or password."
+    assert r.get_json()["error"] == "Wrong name or password."
 
 
 def test_login_returns_role_and_permissions(admin):
@@ -213,9 +213,10 @@ def test_new_doctor_with_login(admin, client):
     r = admin.post("/api/staff", json={
         "first_name": "New", "last_name": "Doctor", "role": "Doctor", "email": "new.doc@hospital.com",
         "hire_date": date.today().isoformat(), "specialization": "ENT", "license_number": "MCI-ENT-099",
-        "available_days": ["Mon", "Thu"], "username": "newdoc", "password": "long-enough-pw1",
+        "available_days": ["Mon", "Thu"], "create_login": True,
     })
     assert r.status_code == 201
+    one_time = r.get_json()["temporary_password"]
     doctor = next(d for d in admin.get("/api/doctors").get_json() if d["license_number"] == "MCI-ENT-099")
     assert doctor["available_days"] == "Mon,Thu"
 
@@ -225,8 +226,9 @@ def test_new_doctor_with_login(admin, client):
     assert r.status_code == 409
 
     admin.post("/api/auth/logout", json={})
-    me = login(client, "newdoc", "long-enough-pw1").get("/api/auth/me").get_json()
+    me = login(client, "New Doctor", one_time).get("/api/auth/me").get_json()
     assert me["role"] == "Doctor" and me["doctor_id"] == doctor["doctor_id"]
+    assert me["must_change_password"] is True
 
 
 def test_room_status_rules(admin):

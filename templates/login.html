@@ -43,6 +43,9 @@
     <!-- RIGHT: sign in -->
     <section class="auth-panel">
       <div class="login-card">
+        {% if demo_mode %}
+        <div class="note-box">Demo mode is on: type a staff member's name and any password.</div>
+        {% endif %}
         <div class="seg" role="tablist">
           <button type="button" data-tab="staff" onclick="showTab('staff')">🩺 Staff</button>
           <button type="button" data-tab="patient" onclick="showTab('patient')">👤 Patient</button>
@@ -67,8 +70,8 @@
           </div>
           <div class="error-banner" id="staff-error"></div>
           <div class="form-group">
-            <label for="username">Username</label>
-            <input id="username" name="username" autocomplete="username" required>
+            <label for="username">Your name</label>
+            <input id="username" name="name" autocomplete="username" placeholder="e.g. Shashank Mishra" required>
           </div>
           <div class="form-group">
             <label for="password">Password</label>
@@ -78,7 +81,7 @@
             </div>
           </div>
           <button class="btn btn-primary" type="submit" id="staff-btn">Sign in</button>
-          <div class="login-foot">Forgot your password? Ask your hospital administrator.</div>
+          <div class="login-foot">First time here? Use the one-time password from your administrator.<br>Forgot your password? Ask the administrator to reset it.</div>
         </form>
 
         <!-- PATIENT: sign in -->

@@ -1,11 +1,10 @@
-import secrets
 from datetime import date
 
 from flask import Blueprint, abort, jsonify, request
 from werkzeug.security import generate_password_hash
 
 from audit import audit
-from auth import can, requires
+from auth import can, requires, temporary_password
 from db import query, query_one, transaction
 from utils import (as_choice, as_date, check_email, check_phone, clean,
                    get_json, require)
@@ -135,12 +134,12 @@ def give_portal_access(pid):
     if query_one("SELECT 1 FROM patient_accounts WHERE patient_id=%s", (pid,)):
         abort(409, "This patient already has portal access.")
 
-    # Easy to read out loud: no 0/O or 1/l, always letters and numbers
-    letters, digits = "abcdefghjkmnpqrstuvwxyz", "23456789"
-    password = "".join(secrets.choice(letters) for _ in range(5)) + "".join(secrets.choice(digits) for _ in range(4))
+    password = temporary_password()
     with transaction() as cur:
-        cur.execute("INSERT INTO patient_accounts (patient_id, email, password_hash) VALUES (%s,%s,%s)",
-                    (pid, email, generate_password_hash(password)))
+        cur.execute("""
+            INSERT INTO patient_accounts (patient_id, email, password_hash, must_change_password)
+            VALUES (%s,%s,%s,TRUE)
+        """, (pid, email, generate_password_hash(password)))
     audit("Gave portal access", f"P-{pid:03d} ({email})")
     return jsonify({"success": True, "email": email, "temporary_password": password}), 201
 

@@ -119,17 +119,8 @@ async function openPortalAccess(id) {
     body: formGrid([{ name: "email", label: "Patient's Email", type: "email", required: true, full: true, value: p.email }]),
     onSubmit: async data => {
       const r = await api.post(`/patients/${id}/portal-access`, data);
-      openModal({
-        title: "Portal Access Created",
-        body: html`
-          <div class="text-sm">Give these details to ${p.first_name}. The password is shown only once.</div>
-          <div class="info-grid" style="margin-top:16px">${info("Website", `${location.origin}/login#patient`)}${info("Email", r.email)}</div>
-          <div class="info-label">One-time password</div>
-          <div class="temp-password">${r.temporary_password}</div>
-          <div class="form-hint">Ask them to change it after signing in (Profile → Change password).</div>`,
-        footer: html`<button type="button" class="btn btn-primary" onclick="closeModal()">Done</button>`,
-      });
-      refreshPage();
+      showOneTimePassword("Portal Access Created", p.first_name, r.temporary_password,
+        html`<div class="info-grid" style="margin-top:16px">${info("Website", `${location.origin}/login#patient`)}${info("Email", r.email)}</div>`);
     },
   });
 }

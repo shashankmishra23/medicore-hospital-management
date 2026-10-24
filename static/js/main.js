@@ -58,10 +58,16 @@ window.addEventListener("hashchange", () => {
   applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
   $("#current-date").textContent =
     new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  let me;
   try {
-    setUser(await api.get("/auth/me"));
+    me = await api.get("/auth/me");
   } catch (e) {
     return; // not logged in: apiFetch already sent us to the login page
+  }
+  setUser(me);
+  if (me.must_change_password) {
+    openChangePassword(true);
+    return;
   }
   applyPermissions();
   buildNewMenu();

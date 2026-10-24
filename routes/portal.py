@@ -4,7 +4,7 @@ their own prescriptions and bills. A patient can only ever see their own data.
 """
 from datetime import date, timedelta
 
-from flask import Blueprint, abort, jsonify, request, session
+from flask import Blueprint, abort, current_app, jsonify, request, session
 from werkzeug.security import generate_password_hash
 
 from audit import audit
@@ -32,6 +32,7 @@ def start_session(account):
         "patient_id": account["patient_id"],
         "name": f"{account['first_name']} {account['last_name']}",
         "email": account["email"],
+        "must_change_password": bool(account.get("must_change_password")) and not current_app.config["DEMO_MODE"],
     }
 
 
@@ -118,6 +119,7 @@ def me():
         LEFT JOIN rooms r ON r.room_id=a.room_id LEFT JOIN wards w ON w.ward_id=r.ward_id
         WHERE a.patient_id=%s AND a.status='Admitted'
     """, (pid,))
+    patient["must_change_password"] = current_patient().get("must_change_password", False)
     return jsonify(patient)
 
 

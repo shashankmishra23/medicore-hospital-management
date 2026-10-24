@@ -116,6 +116,7 @@ CREATE TABLE patient_accounts (
     email         VARCHAR(120) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     is_active     BOOLEAN DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     failed_logins INT NOT NULL DEFAULT 0,
     locked_until  DATETIME,
     last_login    DATETIME,
@@ -282,6 +283,7 @@ CREATE TABLE system_users (
     password_hash VARCHAR(255) NOT NULL,
     role         ENUM('Admin','Doctor','Nurse','Pharmacist','Receptionist','Billing') NOT NULL,
     is_active    BOOLEAN DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     failed_logins INT NOT NULL DEFAULT 0,
     locked_until DATETIME,
     last_login   DATETIME,
@@ -525,18 +527,19 @@ INSERT INTO pharmacy_dispensing (prescription_id,medicine_id,dispensed_by,qty_di
 (1,2,5,30,NOW() - INTERVAL 9 DAY);
 
 -- ------------------------------------------------------------
--- DEMO LOGINS (for trying the app only; change these for real use)
---   Admin: admin / admin123          Doctor: doctor / doctor123
---   Nurse: nurse / nurse123          Pharmacist: pharmacist / pharma123
---   Receptionist: reception / reception123
+-- DEMO LOGINS (for trying the app only; change these for real use).
+-- Staff sign in with their name, e.g. "Shashank Mishra" or just "Shashank":
+--   Admin: Shashank Mishra / admin123      Doctor: Arun Sharma / doctor123
+--   Nurse: Sunita Singh / nurse123          Pharmacist: Mohit Jain / pharma123
+--   Receptionist: Kavita Rao / reception123
 -- Passwords are stored as salted hashes, never as plain text.
 -- ------------------------------------------------------------
 INSERT INTO system_users (staff_id, username, password_hash, role) VALUES
-(8,'admin',     'pbkdf2:sha256:600000$xnuO5Up5yGTGvHRu$4697906dba48033519a7c4dc38af726f18588bf255d7c30aaee92930926451e5','Admin'),
-(1,'doctor',    'pbkdf2:sha256:600000$N7SUfRBjKBVgtIxS$e9eb8595cfe6030496d91913eff19501b1497f24a4f8c93d2f3fc27009484a5a','Doctor'),
-(4,'nurse',     'pbkdf2:sha256:600000$0pDoURDAZCcqVBFD$dc2f8e1ab438d68299f7ade309d02682a0f13a7af29e655e3d90abf0c3e40ba0','Nurse'),
-(5,'pharmacist','pbkdf2:sha256:600000$tnbyDgHSyaMg6aF9$5af3358050e256d518c006748a6ae6be62438845bdd63a0136bcc56402efd054','Pharmacist'),
-(6,'reception', 'pbkdf2:sha256:600000$s1lXV87LvMLXOKDf$a5005845155fd4481e7edb0f68de1a2b4dd5b6823d639f9e5c8e58470552dcff','Receptionist');
+(8,'shashank.mishra','pbkdf2:sha256:600000$xnuO5Up5yGTGvHRu$4697906dba48033519a7c4dc38af726f18588bf255d7c30aaee92930926451e5','Admin'),
+(1,'arun.sharma',    'pbkdf2:sha256:600000$N7SUfRBjKBVgtIxS$e9eb8595cfe6030496d91913eff19501b1497f24a4f8c93d2f3fc27009484a5a','Doctor'),
+(4,'sunita.singh',   'pbkdf2:sha256:600000$0pDoURDAZCcqVBFD$dc2f8e1ab438d68299f7ade309d02682a0f13a7af29e655e3d90abf0c3e40ba0','Nurse'),
+(5,'mohit.jain',     'pbkdf2:sha256:600000$tnbyDgHSyaMg6aF9$5af3358050e256d518c006748a6ae6be62438845bdd63a0136bcc56402efd054','Pharmacist'),
+(6,'kavita.rao',     'pbkdf2:sha256:600000$s1lXV87LvMLXOKDf$a5005845155fd4481e7edb0f68de1a2b4dd5b6823d639f9e5c8e58470552dcff','Receptionist');
 
 -- Demo patient portal login:  anita.p@email.com / patient123
 INSERT INTO patient_accounts (patient_id, email, password_hash) VALUES

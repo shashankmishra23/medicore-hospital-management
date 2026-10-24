@@ -400,5 +400,7 @@ window.addEventListener("hashchange", () => {
 });
 
 applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
-loadMe().catch(() => { });  // fills in the name in the sidebar
-showPage(location.hash.slice(1) || "home");
+loadMe().then(me => {
+  if (me.must_change_password) openChangePassword(true);  // signed in with a one-time password
+  else showPage(location.hash.slice(1) || "home");
+}).catch(() => { });
