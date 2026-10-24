@@ -5,8 +5,7 @@ from flask import Blueprint, abort, jsonify, request
 from audit import audit
 from auth import can, requires
 from db import query, query_one, transaction
-from utils import (as_choice, as_date, check_email, check_phone, clean,
-                   get_json, require)
+from utils import as_choice, as_date, check_email, check_phone, clean, get_json, require
 
 bp = Blueprint("patients", __name__, url_prefix="/api/patients")
 
