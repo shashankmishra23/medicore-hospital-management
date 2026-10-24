@@ -16,8 +16,7 @@ the Settings page (app_settings.require_password).
 from datetime import datetime
 from functools import wraps
 
-from flask import (Blueprint, abort, current_app, jsonify, redirect,
-                   render_template, request, session, url_for)
+from flask import Blueprint, abort, current_app, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from audit import audit
@@ -223,7 +222,8 @@ def find_staff_account(name, role=None):
     if role and any(r["role"] == role for r in rows):
         rows = [r for r in rows if r["role"] == role]
     if len(rows) > 1:
-        exact = [r for r in rows if name.lower() in (r["username"].lower(), f"{r['first_name']} {r['last_name']}".lower())]
+        exact = [r for r in rows
+                 if name.lower() in (r["username"].lower(), f"{r['first_name']} {r['last_name']}".lower())]
         if len(exact) != 1:
             abort(409, f"More than one person is called {name}. Please type your full name.")
         rows = exact

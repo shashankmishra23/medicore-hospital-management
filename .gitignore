@@ -1,4 +1,4 @@
-# Private settings (database password, secret key) — never upload
+# Private settings (database password, secret key): never upload
 .env
 
 # Python
@@ -8,6 +8,7 @@ __pycache__/
 venv/
 env/
 .pytest_cache/
+.ruff_cache/
 
 # Editors and operating systems
 .vscode/

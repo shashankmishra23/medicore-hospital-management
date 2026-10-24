@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pymysql
 import pymysql.cursors
-from pymysql.constants import CLIENT
 from flask import current_app, g
+from pymysql.constants import CLIENT
 
 SCHEMA_FILE = Path(__file__).parent / "database" / "schema.sql"
 

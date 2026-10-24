@@ -13,8 +13,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import create_app  # noqa: E402
 import db  # noqa: E402
+from app import create_app  # noqa: E402
 
 TEST_DB = os.environ.get("TEST_DB_NAME", "hospital_db_test")
 

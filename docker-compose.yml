@@ -1,0 +1,38 @@
+# Runs the app and a MySQL database with sample data:
+#   docker compose up --build
+# then open http://localhost:5000
+#
+# Set DB_PASSWORD and SECRET_KEY in your shell (or a .env file) for anything beyond a local try-out.
+
+services:
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-change-me}
+    volumes:
+      - db-data:/var/lib/mysql
+      # Runs once, on the first start, to create the tables and sample data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_PASSWORD:-change-me}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-change-me}
+      DB_NAME: hospital_db
+      SECRET_KEY: ${SECRET_KEY:-change-this-secret-key}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
