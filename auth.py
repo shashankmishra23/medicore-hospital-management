@@ -10,6 +10,7 @@ needs a logged-in patient (checked in _require_login). Routes also say which
 permission they need, e.g. @requires("patients.write"), and only the roles
 listed in PERMISSIONS have it. Admin has every permission.
 """
+import secrets
 from datetime import datetime
 from functools import wraps
 
@@ -18,7 +19,7 @@ from flask import (Blueprint, abort, current_app, jsonify, redirect,
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from audit import audit
-from db import query_one, transaction
+from db import query, query_one, transaction
 from utils import as_choice, check_password_strength, get_json, require
 
 bp = Blueprint("auth", __name__)
@@ -54,6 +55,13 @@ MAX_FAILED_LOGINS = 5
 LOCK_MINUTES = 15
 
 PUBLIC_API = {"/api/auth/login", "/api/auth/logout", "/api/portal/login", "/api/portal/register"}
+SET_PASSWORD_PATHS = {"/api/auth/me", "/api/auth/change-password", "/api/portal/me"}
+
+
+def temporary_password():
+    """One-time password that is easy to read out: no 0/O or 1/l, always letters and numbers."""
+    letters, digits = "abcdefghjkmnpqrstuvwxyz", "23456789"
+    return "".join(secrets.choice(letters) for _ in range(5)) + "".join(secrets.choice(digits) for _ in range(4))
 
 
 def allowed_actions(role):
@@ -99,6 +107,9 @@ def _require_login():
         logged_in = current_user()
     if not logged_in:
         return jsonify({"error": "Please log in."}), 401
+    # Someone signed in with a one-time password must choose their own first
+    if logged_in.get("must_change_password") and path not in SET_PASSWORD_PATHS:
+        return jsonify({"error": "Please set your own password first."}), 403
     # Writes must be JSON. Browsers cannot send JSON from another website
     # without permission, so this also blocks cross-site form tricks (CSRF).
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and not request.is_json:
@@ -113,14 +124,20 @@ def init_app(app):
 
 @bp.app_context_processor
 def inject_hospital():
-    return {"hospital": current_app.config["HOSPITAL"]}
+    return {"hospital": current_app.config["HOSPITAL"], "demo_mode": current_app.config["DEMO_MODE"]}
 
 
 def verify_password(table, key, account, password):
     """
     Check a password for a row of system_users or patient_accounts.
     Too many wrong tries in a row lock the account for LOCK_MINUTES.
+    In demo mode any password is accepted.
     """
+    if current_app.config["DEMO_MODE"]:
+        with transaction() as cur:
+            cur.execute(f"UPDATE {table} SET last_login=NOW() WHERE {key}=%s", (account[key],))
+        return
+
     now = datetime.now()
     if account["locked_until"] and account["locked_until"] > now:
         minutes = int((account["locked_until"] - now).total_seconds() // 60) + 1
@@ -147,7 +164,7 @@ def verify_password(table, key, account, password):
         failed = cur.fetchone()["failed_logins"]
     if failed >= MAX_FAILED_LOGINS:
         abort(429, f"Too many wrong attempts. This account is locked for {LOCK_MINUTES} minutes.")
-    abort(401, "Wrong username or password.")
+    abort(401, "Wrong name or password.")
 
 
 # Pages
@@ -177,33 +194,50 @@ def portal():
 
 
 # Staff login API
-@bp.route("/api/auth/login", methods=["POST"])
-def login():
-    data = get_json()
-    require(data, "username", "password")
-    user = query_one("""
-        SELECT u.user_id, u.username, u.password_hash, u.role, u.is_active,
+def find_staff_account(name, role=None):
+    """
+    Staff sign in with their name: full name ("Arun Sharma"), first name
+    ("Arun") or username ("arun.sharma"), in any letter case.
+    """
+    name = " ".join(str(name).split())
+    rows = query("""
+        SELECT u.user_id, u.username, u.password_hash, u.role, u.is_active, u.must_change_password,
                u.failed_logins, u.locked_until,
                s.staff_id, s.first_name, s.last_name, s.status AS staff_status, d.doctor_id
         FROM system_users u
         JOIN staff s ON s.staff_id = u.staff_id
         LEFT JOIN doctors d ON d.staff_id = s.staff_id
-        WHERE u.username = %s
-    """, (data["username"].strip(),))
+        WHERE u.username = %s OR CONCAT(s.first_name, ' ', s.last_name) = %s OR s.first_name = %s
+    """, (name, name, name))
+    if role and any(r["role"] == role for r in rows):
+        rows = [r for r in rows if r["role"] == role]
+    if len(rows) > 1:
+        exact = [r for r in rows if name.lower() in (r["username"].lower(), f"{r['first_name']} {r['last_name']}".lower())]
+        if len(exact) != 1:
+            abort(409, f"More than one person is called {name}. Please type your full name.")
+        rows = exact
+    return rows[0] if rows else None
 
-    # Same message for "no such user" and "wrong password", so nobody can
-    # find out which usernames exist.
+
+@bp.route("/api/auth/login", methods=["POST"])
+def login():
+    data = get_json()
+    data["name"] = data.get("name") or data.get("username")
+    require(data, "name", "password")
+    chosen = as_choice(data["role"], "Role", STAFF_ROLES) if data.get("role") else None
+    user = find_staff_account(data["name"], chosen)
+
+    # Same message for "no such person" and "wrong password", so nobody can
+    # find out who has an account.
     if not user:
-        abort(401, "Wrong username or password.")
+        abort(401, "Wrong name or password.")
     verify_password("system_users", "user_id", user, data["password"])
 
     if not user["is_active"] or user["staff_status"] == "Inactive":
         abort(403, "This account has been turned off. Please contact the hospital admin.")
-    if data.get("role"):
-        chosen = as_choice(data["role"], "Role", STAFF_ROLES)
-        if chosen != user["role"]:
-            article = "an" if chosen[0] in "AEIOU" else "a"
-            abort(403, f"This is not {article} {chosen} account. Go back and choose {user['role']}.")
+    if chosen and chosen != user["role"]:
+        article = "an" if chosen[0] in "AEIOU" else "a"
+        abort(403, f"{user['first_name']} does not have {article} {chosen} account. Go back and choose {user['role']}.")
 
     session.clear()
     session.permanent = True
@@ -214,6 +248,7 @@ def login():
         "staff_id": user["staff_id"],
         "doctor_id": user["doctor_id"],
         "name": f"{user['first_name']} {user['last_name']}",
+        "must_change_password": bool(user["must_change_password"]) and not current_app.config["DEMO_MODE"],
     }
     audit("Signed in")
     return me()
@@ -239,7 +274,8 @@ def change_password():
     data = get_json()
     require(data, "current_password", "new_password")
     check_password_strength(data["new_password"])
-    if current_user():
+    kind = "user" if current_user() else "patient"
+    if kind == "user":
         table, key, account_id = "system_users", "user_id", current_user()["user_id"]
     else:
         table, key, account_id = "patient_accounts", "account_id", current_patient()["account_id"]
@@ -250,7 +286,8 @@ def change_password():
     if data["current_password"] == data["new_password"]:
         abort(400, "The new password must be different from the old one.")
     with transaction() as cur:
-        cur.execute(f"UPDATE {table} SET password_hash=%s WHERE {key}=%s",
+        cur.execute(f"UPDATE {table} SET password_hash=%s, must_change_password=FALSE WHERE {key}=%s",
                     (generate_password_hash(data["new_password"]), account_id))
+    session[kind] = {**session[kind], "must_change_password": False}
     audit("Changed password")
     return jsonify({"success": True})

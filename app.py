@@ -44,7 +44,7 @@ def register_commands(app):
             click.confirm(f"This deletes the database '{name}' and all its data, then "
                           f"creates it again with sample data. Continue?", abort=True)
         db.load_schema(app.config)
-        click.echo(f"Database '{name}' is ready. Log in with admin / admin123.")
+        click.echo(f"Database '{name}' is ready. Sign in as Admin: Shashank Mishra / admin123.")
 
     @app.cli.command("create-user")
     @click.option("--staff-id", type=int, required=True, prompt="Staff ID", help="Existing staff_id.")

@@ -13,7 +13,8 @@ The hospital name, address and phone number come from settings, so the same code
 
 **Staff app**
 
-- Role-based sign in. Staff pick their role (Admin, Doctor, Nurse, Pharmacist, Receptionist) and the server checks that the account really has that role.
+- Role-based sign in. Staff pick their role (Admin, Doctor, Nurse, Pharmacist, Receptionist), then type their name and password. The server checks that the account really has that role.
+- No usernames to remember: staff sign in with their full name or first name. New staff get a one-time password from the admin and choose their own the first time they sign in. Admins can reset a forgotten password.
 - Each role gets its own menu and data. For example, a pharmacist can't open billing, and a doctor doesn't see revenue. This is enforced by the API, not just hidden in the UI.
 - Patients: register, edit, search by name / phone / ID, full patient file with history, allergies, admissions, prescriptions and bills.
 - Appointments: book from the doctor's free 30-minute slots, with checks for working days, past dates and double-booking. Online bookings are marked so reception can spot them.
@@ -32,7 +33,7 @@ The hospital name, address and phone number come from settings, so the same code
 **Security**
 
 - Passwords are stored as salted hashes. Accounts lock for 15 minutes after 5 wrong passwords.
-- Everyone can change their own password. New passwords need letters and numbers.
+- One-time passwords must be replaced before anything else can be done. New passwords need letters and numbers.
 - SQL queries are parameterised; all text shown on the page is escaped; API writes must be JSON (blocks cross-site form posts).
 - Database password and secret key live in `.env`, which is not committed.
 
@@ -76,18 +77,24 @@ python app.py
 
 Open http://127.0.0.1:5000.
 
-### Demo accounts
+### Signing in
 
-| Role | Username | Password |
+Choose your role on the login page, then type your **name** (for example `Shashank Mishra`, or just `Shashank`) and password.
+
+The sample data has one person for each role:
+
+| Role | Name | Password |
 |---|---|---|
-| Admin | `admin` | `admin123` |
-| Doctor | `doctor` | `doctor123` |
-| Nurse | `nurse` | `nurse123` |
-| Pharmacist | `pharmacist` | `pharma123` |
-| Receptionist | `reception` | `reception123` |
+| Admin | Shashank Mishra | `admin123` |
+| Doctor | Arun Sharma | `doctor123` |
+| Nurse | Sunita Singh | `nurse123` |
+| Pharmacist | Mohit Jain | `pharma123` |
+| Receptionist | Kavita Rao | `reception123` |
 | Patient (portal) | `anita.p@email.com` | `patient123` |
 
-These are only for trying the app. Change them before using it for real. More staff logins can be added from **Doctors & Staff → Add Staff** or with `flask create-user`.
+**Demo mode.** Set `DEMO_MODE=1` in `.env` and any password is accepted, which is handy when showing the project to someone. The login page says when it is on. Keep it `0` for real use.
+
+New staff are added from **Doctors & Staff → Add Staff**. The admin gets a one-time password to hand over, and the person picks their own password the first time they sign in.
 
 ### What each role can do
 

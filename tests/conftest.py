@@ -21,7 +21,7 @@ TEST_DB = os.environ.get("TEST_DB_NAME", "hospital_db_test")
 
 @pytest.fixture(scope="session")
 def app():
-    app = create_app({"DB_NAME": TEST_DB, "TESTING": True, "SECRET_KEY": "test"})
+    app = create_app({"DB_NAME": TEST_DB, "TESTING": True, "SECRET_KEY": "test", "DEMO_MODE": False})
     db.load_schema(app.config)
     yield app
     db.drop_database(app.config)
@@ -32,15 +32,20 @@ def client(app):
     return app.test_client()
 
 
-DEMO_PASSWORDS = {
-    "admin": "admin123", "doctor": "doctor123", "nurse": "nurse123",
-    "pharmacist": "pharma123", "reception": "reception123",
+# Sample staff accounts: role -> (name they sign in with, password)
+DEMO_STAFF = {
+    "admin": ("Shashank Mishra", "admin123"),
+    "doctor": ("Arun Sharma", "doctor123"),
+    "nurse": ("Sunita Singh", "nurse123"),
+    "pharmacist": ("Mohit Jain", "pharma123"),
+    "reception": ("Kavita Rao", "reception123"),
 }
 
 
-def login(client, username, password=None):
-    password = password or DEMO_PASSWORDS[username]
-    r = client.post("/api/auth/login", json={"username": username, "password": password})
+def login(client, who, password=None):
+    """who is a key of DEMO_STAFF, or any staff name (then pass the password)."""
+    name, demo_password = DEMO_STAFF.get(who, (who, None))
+    r = client.post("/api/auth/login", json={"name": name, "password": password or demo_password})
     assert r.status_code == 200, r.get_json()
     return client
 

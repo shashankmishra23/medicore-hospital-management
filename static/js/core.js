@@ -207,13 +207,15 @@ function toggleNav(open) {
 }
 
 // Modal (one popup window, reused by every form)
-function openModal({ title, body, wide = false, submitLabel = "Save", onSubmit, onOpen, intro, footer }) {
+// locked: the popup can't be closed until the form is saved (used for "set your own password")
+function openModal({ title, body, wide = false, submitLabel = "Save", onSubmit, onOpen, intro, footer, locked = false }) {
   const box = $("#modal-box");
+  state.modalLocked = locked;
   box.className = "modal" + (wide ? " wide" : "");
   box.innerHTML = html`
     <div class="modal-header">
       <div class="modal-title">${title}</div>
-      <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>
+      ${locked ? "" : html`<button type="button" class="modal-close" onclick="closeModal()" aria-label="Close">✕</button>`}
     </div>
     <form id="modal-form" novalidate autocomplete="off">
       <div class="modal-body">
@@ -223,7 +225,7 @@ function openModal({ title, body, wide = false, submitLabel = "Save", onSubmit, 
       </div>
       ${onSubmit ? html`
         <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+          ${locked ? "" : html`<button type="button" class="btn btn-ghost" onclick="closeModal()">Cancel</button>`}
           <button type="submit" class="btn btn-primary" id="modal-submit">${submitLabel}</button>
         </div>` : footer ? html`<div class="modal-footer">${footer}</div>` : ""}
     </form>`;
@@ -260,7 +262,9 @@ function openModal({ title, body, wide = false, submitLabel = "Save", onSubmit, 
   $("input:not([type=checkbox]):not([type=hidden]), select, textarea", form)?.focus();
 }
 
-function closeModal() {
+function closeModal(force = false) {
+  if (state.modalLocked && !force) return;
+  state.modalLocked = false;
   $("#modal").classList.remove("open");
 }
 
@@ -433,22 +437,39 @@ function openReceipt(billId, url = `/bills/${billId}`) {
   });
 }
 
-// Change password (staff and patients)
-function openChangePassword() {
+// Change password (staff and patients).
+// firstTime: signed in with a one-time password, so they must pick their own before going on.
+function openChangePassword(firstTime = false) {
   openModal({
-    title: "Change Password",
-    submitLabel: "Change Password",
+    title: firstTime ? "Choose Your Own Password" : "Change Password",
+    intro: firstTime ? "You signed in with a one-time password. Pick a password only you know to continue." : "",
+    submitLabel: firstTime ? "Save and Continue" : "Change Password",
+    locked: firstTime,
     body: formGrid([
-      { name: "current_password", label: "Current Password", type: "password", required: true, full: true },
+      { name: "current_password", label: firstTime ? "One-time Password" : "Current Password", type: "password", required: true, full: true },
       { name: "new_password", label: "New Password", type: "password", required: true, full: true, hint: "At least 8 characters, with letters and numbers" },
       { name: "confirm_password", label: "Repeat New Password", type: "password", required: true, full: true },
     ]),
     onSubmit: async data => {
       if (data.new_password !== data.confirm_password) throw new Error("The two new passwords are not the same.");
       await api.post("/auth/change-password", data);
+      if (firstTime) { location.reload(); return; }
       closeModal();
       showToast("Password changed!");
     },
+  });
+}
+
+// Shows a one-time password once, so staff can hand it over
+function showOneTimePassword(title, who, password, extra = "") {
+  openModal({
+    title,
+    body: html`
+      <div class="text-sm">Give this to ${who}. It is shown only once; they choose their own password when they first sign in.</div>
+      ${extra}
+      <div class="info-label" style="margin-top:16px">One-time password</div>
+      <div class="temp-password">${password}</div>`,
+    footer: html`<button type="button" class="btn btn-primary" onclick="closeModal()">Done</button>`,
   });
 }
 
