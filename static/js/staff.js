@@ -42,10 +42,7 @@ async function loadStaffPage() {
           <td class="td-mono">${s.username ? html`${s.username}<div class="cell-sub">${s.login_role}</div>` : "—"}</td>
           <td class="td-mono">${formatDate(s.hire_date)}</td>
           <td>${statusBadge(s.status)}</td>
-          <td data-perm="staff.write"><div class="btn-row">
-            <button class="btn btn-ghost btn-sm" onclick="openStaffStatus(${s.staff_id})">Status</button>
-            ${s.username ? html`<button class="btn btn-ghost btn-sm" onclick="resetStaffPassword(${s.staff_id})">Reset password</button>` : ""}
-          </div></td>
+          <td data-perm="staff.write"><button class="btn btn-ghost btn-sm" onclick="openStaffStatus(${s.staff_id})">Status</button></td>
         </tr>`)}</tbody>
       </table>`;
     }
@@ -57,7 +54,6 @@ async function openStaffForm() {
   let departments;
   try { departments = await api.get("/departments"); } catch (e) { showToast(e.message, true); return; }
   const roles = ["Doctor", "Nurse", "Pharmacist", "Lab Technician", "Receptionist", "Admin", "Support"];
-  const loginRoleFor = { Doctor: "Doctor", Nurse: "Nurse", Pharmacist: "Pharmacist", Receptionist: "Receptionist", Admin: "Admin" };
 
   openModal({
     title: "Add Staff Member",
@@ -83,42 +79,16 @@ async function openStaffForm() {
       { name: "available_days", label: "Working Days", type: "checks", full: true, group: "doctor",
         options: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], value: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
 
-      { type: "section", label: "Sign-in" },
-      { name: "create_login", label: "Login", type: "checkbox", value: true, full: true,
-        text: "This person signs in to the system (they use their name and choose their own password)" },
-      { name: "login_role", label: "Signs in as", type: "select", options: ["Admin", "Doctor", "Nurse", "Pharmacist", "Receptionist"], value: "Nurse", group: "login" },
     ]),
     onOpen: form => {
-      const role = $("#f_role", form), login = $("#f_create_login", form);
-      const sync = () => {
-        showGroup(form, "doctor", role.value === "Doctor");
-        showGroup(form, "login", login.checked);
-        if (loginRoleFor[role.value]) $("#f_login_role", form).value = loginRoleFor[role.value];
-      };
+      const role = $("#f_role", form);
+      const sync = () => showGroup(form, "doctor", role.value === "Doctor");
       role.addEventListener("change", sync);
-      login.addEventListener("change", sync);
       sync();
     },
     onSubmit: async data => {
-      const r = await api.post("/staff", data);
-      refreshPage();
-      if (r.temporary_password) showOneTimePassword("Staff Member Added", `${data.first_name} ${data.last_name}`, r.temporary_password);
-      else saved(`${data.first_name} ${data.last_name} added!`);
-    },
-  });
-}
-
-function resetStaffPassword(id) {
-  const s = staffById[id];
-  if (!s) return;
-  openModal({
-    title: "Reset Password",
-    intro: `${s.first_name} ${s.last_name} will get a new one-time password and must choose their own when they next sign in. This also unlocks the account.`,
-    submitLabel: "Reset Password",
-    body: "",
-    onSubmit: async () => {
-      const r = await api.post(`/staff/${id}/reset-password`);
-      showOneTimePassword("New One-time Password", `${s.first_name} ${s.last_name}`, r.temporary_password);
+      await api.post("/staff", data);
+      saved(`${data.first_name} ${data.last_name} added! Create their login on the Settings page.`);
     },
   });
 }

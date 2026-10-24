@@ -83,14 +83,16 @@ def test_patient_only_sees_own_records(app):
     assert rx and all(len(r["items"]) > 0 for r in rx)
 
 
-def test_reception_gives_portal_access(app):
-    staff = login(app.test_client(), "reception")
-    r = staff.post("/api/patients/5/portal-access", json={"email": "amit.s@email.com"})
-    assert r.status_code == 201
-    temp = r.get_json()["temporary_password"]
-    assert staff.post("/api/patients/5/portal-access", json={"email": "x@y.com"}).status_code == 409
+def test_admin_creates_portal_account_for_existing_patient(app):
+    reception = login(app.test_client(), "reception")
+    account = {"patient_id": 5, "email": "amit.s@email.com", "password": "amit-pass-55"}
+    assert reception.post("/api/settings/patient-accounts", json=account).status_code == 403   # Settings is admin only
 
-    me = patient_login(app.test_client(), "amit.s@email.com", temp).get("/api/portal/me").get_json()
+    admin = login(app.test_client(), "admin")
+    assert admin.post("/api/settings/patient-accounts", json=account).status_code == 201
+    assert admin.post("/api/settings/patient-accounts", json={**account, "email": "x@y.com"}).status_code == 409
+
+    me = patient_login(app.test_client(), "amit.s@email.com", "amit-pass-55").get("/api/portal/me").get_json()
     assert me["patient_id"] == 5
 
 

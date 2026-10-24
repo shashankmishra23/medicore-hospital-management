@@ -9,8 +9,10 @@ Every /api/ route needs a logged-in staff member, and every /api/portal/ route
 needs a logged-in patient (checked in _require_login). Routes also say which
 permission they need, e.g. @requires("patients.write"), and only the roles
 listed in PERMISSIONS have it. Admin has every permission.
+
+Whether a password is asked for at all is a setting the admin can switch on
+the Settings page (app_settings.require_password).
 """
-import secrets
 from datetime import datetime
 from functools import wraps
 
@@ -48,6 +50,7 @@ PERMISSIONS = {
     "billing.write":          {"Receptionist"},
     "rooms.write":            {"Nurse"},
     "staff.write":            set(),  # Admin only
+    "settings.manage":        set(),  # Admin only: sign-in settings and accounts
 }
 
 # After this many wrong passwords in a row, the account is locked for a while
@@ -55,13 +58,6 @@ MAX_FAILED_LOGINS = 5
 LOCK_MINUTES = 15
 
 PUBLIC_API = {"/api/auth/login", "/api/auth/logout", "/api/portal/login", "/api/portal/register"}
-SET_PASSWORD_PATHS = {"/api/auth/me", "/api/auth/change-password", "/api/portal/me"}
-
-
-def temporary_password():
-    """One-time password that is easy to read out: no 0/O or 1/l, always letters and numbers."""
-    letters, digits = "abcdefghjkmnpqrstuvwxyz", "23456789"
-    return "".join(secrets.choice(letters) for _ in range(5)) + "".join(secrets.choice(digits) for _ in range(4))
 
 
 def allowed_actions(role):
@@ -81,6 +77,12 @@ def current_user():
 def current_patient():
     """The logged-in patient (portal), or None."""
     return session.get("patient")
+
+
+def password_required():
+    """The admin's choice on the Settings page: ask for a password when signing in?"""
+    row = query_one("SELECT setting_value FROM app_settings WHERE setting_key='require_password'")
+    return row is None or row["setting_value"] == "1"
 
 
 def requires(action):
@@ -107,9 +109,6 @@ def _require_login():
         logged_in = current_user()
     if not logged_in:
         return jsonify({"error": "Please log in."}), 401
-    # Someone signed in with a one-time password must choose their own first
-    if logged_in.get("must_change_password") and path not in SET_PASSWORD_PATHS:
-        return jsonify({"error": "Please set your own password first."}), 403
     # Writes must be JSON. Browsers cannot send JSON from another website
     # without permission, so this also blocks cross-site form tricks (CSRF).
     if request.method in ("POST", "PUT", "PATCH", "DELETE") and not request.is_json:
@@ -123,17 +122,21 @@ def init_app(app):
 
 
 @bp.app_context_processor
-def inject_hospital():
-    return {"hospital": current_app.config["HOSPITAL"], "demo_mode": current_app.config["DEMO_MODE"]}
+def inject_settings():
+    """Hospital details, and whether to show password boxes, for every page."""
+    values = {"hospital": current_app.config["HOSPITAL"]}
+    if request.endpoint in ("auth.login_page", "auth.index", "auth.portal"):
+        values["require_password"] = password_required()
+    return values
 
 
 def verify_password(table, key, account, password):
     """
     Check a password for a row of system_users or patient_accounts.
     Too many wrong tries in a row lock the account for LOCK_MINUTES.
-    In demo mode any password is accepted.
+    When the admin has turned passwords off, the name or email is enough.
     """
-    if current_app.config["DEMO_MODE"]:
+    if not password_required():
         with transaction() as cur:
             cur.execute(f"UPDATE {table} SET last_login=NOW() WHERE {key}=%s", (account[key],))
         return
@@ -143,7 +146,7 @@ def verify_password(table, key, account, password):
         minutes = int((account["locked_until"] - now).total_seconds() // 60) + 1
         abort(429, f"Too many wrong attempts. This account is locked for {minutes} more minute(s).")
 
-    if check_password_hash(account["password_hash"], password):
+    if account["password_hash"] and check_password_hash(account["password_hash"], password or ""):
         with transaction() as cur:
             cur.execute(f"""
                 UPDATE {table} SET failed_logins=0, locked_until=NULL, last_login=NOW()
@@ -165,6 +168,14 @@ def verify_password(table, key, account, password):
     if failed >= MAX_FAILED_LOGINS:
         abort(429, f"Too many wrong attempts. This account is locked for {LOCK_MINUTES} minutes.")
     abort(401, "Wrong name or password.")
+
+
+def hash_password(password):
+    """Stored hash for a password set on the Settings page or at sign-up ('' = no password yet)."""
+    if not password:
+        return ""
+    check_password_strength(password)
+    return generate_password_hash(password)
 
 
 # Pages
@@ -201,7 +212,7 @@ def find_staff_account(name, role=None):
     """
     name = " ".join(str(name).split())
     rows = query("""
-        SELECT u.user_id, u.username, u.password_hash, u.role, u.is_active, u.must_change_password,
+        SELECT u.user_id, u.username, u.password_hash, u.role, u.is_active,
                u.failed_logins, u.locked_until,
                s.staff_id, s.first_name, s.last_name, s.status AS staff_status, d.doctor_id
         FROM system_users u
@@ -223,15 +234,15 @@ def find_staff_account(name, role=None):
 def login():
     data = get_json()
     data["name"] = data.get("name") or data.get("username")
-    require(data, "name", "password")
+    require(data, "name")
     chosen = as_choice(data["role"], "Role", STAFF_ROLES) if data.get("role") else None
     user = find_staff_account(data["name"], chosen)
 
     # Same message for "no such person" and "wrong password", so nobody can
     # find out who has an account.
     if not user:
-        abort(401, "Wrong name or password.")
-    verify_password("system_users", "user_id", user, data["password"])
+        abort(401, "Wrong name or password." if password_required() else f"No staff account found for {data['name']}.")
+    verify_password("system_users", "user_id", user, data.get("password"))
 
     if not user["is_active"] or user["staff_status"] == "Inactive":
         abort(403, "This account has been turned off. Please contact the hospital admin.")
@@ -248,7 +259,6 @@ def login():
         "staff_id": user["staff_id"],
         "doctor_id": user["doctor_id"],
         "name": f"{user['first_name']} {user['last_name']}",
-        "must_change_password": bool(user["must_change_password"]) and not current_app.config["DEMO_MODE"],
     }
     audit("Signed in")
     return me()
@@ -274,20 +284,18 @@ def change_password():
     data = get_json()
     require(data, "current_password", "new_password")
     check_password_strength(data["new_password"])
-    kind = "user" if current_user() else "patient"
-    if kind == "user":
+    if current_user():
         table, key, account_id = "system_users", "user_id", current_user()["user_id"]
     else:
         table, key, account_id = "patient_accounts", "account_id", current_patient()["account_id"]
 
     row = query_one(f"SELECT password_hash FROM {table} WHERE {key}=%s", (account_id,))
-    if not check_password_hash(row["password_hash"], data["current_password"]):
+    if not row["password_hash"] or not check_password_hash(row["password_hash"], data["current_password"]):
         abort(400, "Your current password is not correct.")
     if data["current_password"] == data["new_password"]:
         abort(400, "The new password must be different from the old one.")
     with transaction() as cur:
-        cur.execute(f"UPDATE {table} SET password_hash=%s, must_change_password=FALSE WHERE {key}=%s",
+        cur.execute(f"UPDATE {table} SET password_hash=%s WHERE {key}=%s",
                     (generate_password_hash(data["new_password"]), account_id))
-    session[kind] = {**session[kind], "must_change_password": False}
     audit("Changed password")
     return jsonify({"success": True})

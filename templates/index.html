@@ -19,7 +19,7 @@
     rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  {% for js in ['core', 'dashboard', 'patients', 'appointments', 'admissions', 'prescriptions', 'staff', 'pharmacy', 'billing', 'wards', 'activity', 'main'] %}
+  {% for js in ['core', 'dashboard', 'patients', 'appointments', 'admissions', 'prescriptions', 'staff', 'pharmacy', 'billing', 'wards', 'activity', 'settings', 'main'] %}
   <script src="{{ url_for('static', filename='js/' ~ js ~ '.js') }}" defer></script>
   {% endfor %}
 </head>
@@ -55,6 +55,7 @@
       <div class="nav-section" style="margin-top:8px;" data-perm="view.activity">
         <div class="nav-label">Administration</div>
         <div class="nav-item" data-page="activity" onclick="showPage('activity')"><span class="nav-icon">📜</span> Activity Log</div>
+        <div class="nav-item" data-page="settings" data-perm="settings.manage" onclick="showPage('settings')"><span class="nav-icon">⚙️</span> Settings</div>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -64,7 +65,9 @@
           <div style="font-size:0.8rem;font-weight:600" id="user-name"></div>
           <div style="font-size:0.68rem;color:var(--muted)" id="user-role"></div>
         </div>
+        {% if require_password %}
         <button class="logout-btn" onclick="openChangePassword()" title="Change password">🔑</button>
+        {% endif %}
         <button class="logout-btn" style="margin-left:4px" onclick="logout()" title="Log out">Log out</button>
       </div>
     </div>
@@ -341,6 +344,48 @@
       <div class="section-sub">Bed availability and room allocation. Click a free room to admit a patient.</div>
       <div id="wards-error" class="error-banner"></div>
       <div id="wards-content"></div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div class="page" id="page-settings">
+      <div class="section-title">Settings</div>
+      <div class="section-sub">How people sign in, and every login account for staff and patients. Only admins can see this.</div>
+      <div id="settings-error" class="error-banner"></div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Sign-in</div></div>
+        <div class="card-body">
+          <label class="switch-row">
+            <input type="checkbox" id="require-password" onchange="toggleRequirePassword(this)">
+            <span class="switch"></span>
+            <span><b>Ask for a password when signing in</b><span class="cell-sub" id="pw-explain" style="display:block;margin-top:2px"></span></span>
+          </label>
+          <div class="note-box" id="pw-warning" style="margin:14px 0 0" hidden></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Staff accounts</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Name</th><th>Job</th><th>Signs in as</th><th>Password</th><th>Account</th><th>Last sign-in</th><th></th></tr></thead>
+            <tbody id="staff-accounts"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Patient portal accounts</div>
+          <button class="btn btn-primary btn-sm" onclick="openPatientAccountForm()">+ Create patient account</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Patient</th><th>Email (signs in with)</th><th>Password</th><th>Account</th><th>Last sign-in</th><th></th></tr></thead>
+            <tbody id="patient-accounts"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- ── ACTIVITY LOG ── -->
