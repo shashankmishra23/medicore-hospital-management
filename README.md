@@ -22,6 +22,7 @@ Built with Flask and MySQL, tested in CI, and runnable with one Docker command.
 [**Features**](#features) ·
 [**Screenshots**](#screenshots) ·
 [**Architecture**](#architecture) ·
+[**Data and analytics**](#data-and-analytics) ·
 [**Design decisions**](#design-decisions) ·
 [**API**](#api-reference)
 
@@ -256,6 +257,59 @@ Full schema with sample data: [`database/schema.sql`](database/schema.sql)
 </p>
 
 Flask (app factory, blueprints) · PyMySQL · MySQL 8 (foreign keys, views, generated columns, row locking) · plain JavaScript and CSS · Chart.js · gunicorn · pytest · ruff · GitHub Actions
+
+## Data and analytics
+
+Every number on the dashboard is calculated live in MySQL from the hospital's records. Nothing is stored twice or entered by hand.
+
+| Dashboard item | Source data | SQL technique |
+|---|---|---|
+| **Revenue, last 6 months** (bar chart) | `payments` | `DATE_FORMAT` to group by month, `SUM`; empty months filled in as 0 |
+| **Appointments by status, last 30 days** (doughnut) | `appointments` | `COUNT(*)` with `GROUP BY status` |
+| **Bed occupancy by ward** (stacked bar) | `wards` | Derived column `total_beds - available_beds` |
+| **Outstanding balance** | `bills` | `SUM(balance)` over pending and partly paid bills |
+| **Pending prescriptions** | `prescription_items`, `pharmacy_dispensing` | Aggregated subquery with `LEFT JOIN` comparing prescribed and dispensed quantities |
+| **Alerts bell** | `medicines`, `bills`, `wards` | `DATEDIFF` for medicines expiring within 30 days, overdue bills, full wards |
+
+<details>
+<summary><b>Example queries</b> (taken from <code>routes/dashboard.py</code>)</summary>
+<br>
+
+**Monthly revenue for the last six months**
+
+```sql
+SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month, SUM(amount) AS total
+FROM payments
+WHERE payment_date >= DATE_FORMAT(CURDATE() - INTERVAL 5 MONTH, '%Y-%m-01')
+GROUP BY month;
+```
+
+**Prescriptions with at least one medicine not yet handed out in full**
+
+```sql
+SELECT DISTINCT pi.prescription_id
+FROM prescription_items pi
+LEFT JOIN (SELECT prescription_id, medicine_id, SUM(qty_dispensed) AS qty
+           FROM pharmacy_dispensing
+           GROUP BY prescription_id, medicine_id) d
+  ON d.prescription_id = pi.prescription_id AND d.medicine_id = pi.medicine_id
+WHERE pi.qty_prescribed > COALESCE(d.qty, 0);
+```
+
+</details>
+
+**Reporting views.** The schema includes four views that join several tables into ready-to-use reports:
+
+| View | What it answers |
+|---|---|
+| `vw_patient_overview` | Each patient with their current admission, room, ward and attending doctor |
+| `vw_doctor_schedule` | Each doctor's department, fee, working days and today's appointment count |
+| `vw_outstanding_bills` | Unpaid and partly paid bills, largest balance first |
+| `vw_low_stock_medicines` | Medicines at or below their reorder level |
+
+```sql
+SELECT * FROM vw_outstanding_bills;   -- who owes what, largest first
+```
 
 ## Design decisions
 
